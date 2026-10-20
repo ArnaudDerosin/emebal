@@ -43,9 +43,7 @@ struct TranslationView: View {
 
     private var header: some View {
         HStack(spacing: 6) {
-            Text(model.sourceName)
-                .foregroundStyle(.secondary)
-                .help("Detected language")
+            SourceLanguageLabel(name: model.sourceName, isDetected: model.sourceLanguage != nil)
             Image(systemName: "arrow.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
@@ -96,6 +94,25 @@ struct TargetLanguageMenu: View {
         // Open the menu just below the button.
         let below = NSPoint(x: 0, y: view.isFlipped ? view.bounds.height + 4 : -4)
         menu.popUp(positioning: nil, at: below, in: view)
+    }
+}
+
+/// "日本語 (Detected)": the source language, with a lighter hint that the app
+/// found it on its own.
+struct SourceLanguageLabel: View {
+    let name: String
+    let isDetected: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(name)
+                .foregroundStyle(.secondary)
+            if isDetected {
+                Text("(Detected)")
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .help(isDetected ? "Language detected automatically" : "The language couldn't be detected")
     }
 }
 
