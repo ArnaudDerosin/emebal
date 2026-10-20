@@ -14,6 +14,10 @@
 </p>
 
 <p align="center">
+  <strong>English</strong> · <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#getting-started">Getting started</a> ·
@@ -45,6 +49,7 @@ more natural, a few seconds later.
   elsewhere (or stays open, if you prefer)
 - **Translate Clipboard** from the menu-bar icon, without the shortcut
 - **Open at Login**, so it is always ready in the menu bar
+- **In English and Japanese**, following your Mac's language
 
 ## How it works
 
@@ -176,6 +181,24 @@ EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh --install
 swift test                        # fast tests only
 EMEBAL_LIVE_TESTS=1 swift test    # also runs a real translation through Claude Code
 ```
+
+### Translations
+
+Emebal's interface follows the language set in macOS, and falls back to
+English. Each language is a folder in `Resources/Localization/`
+(`en.lproj`, `ja.lproj`…) with a `Localizable.strings` file: the keys are the
+English text, and the values are the translation.
+
+To add a language, for example French:
+
+1. Copy `ja.lproj` to `fr.lproj` and translate each value. Keep placeholders
+   like `%@`; write `%1$@`, `%2$@` if the word order changes.
+2. Run `swift test`: it checks that every language has all the English strings
+   with the same placeholders.
+
+After changing interface text in the code, run `./scripts/update-strings.sh`.
+It regenerates the English strings from the code and lists what each language
+is missing.
 
 ## Why “Emebal”?
 
