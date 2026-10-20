@@ -8,8 +8,8 @@ by side: Apple's on-device translation, available instantly, and Claude's, more
 natural, a few seconds later. The source language is detected automatically, and
 you choose the language you want to read in.
 
-> **Status:** early development. The menu-bar shell runs; translation is not
-> implemented yet.
+> **Status:** early development. The first working version is here: double ⌘C,
+> Apple and Claude side by side, language detection and a target-language menu.
 
 ## Why "Emebal"?
 
@@ -66,7 +66,18 @@ To work on the code, open the folder in Xcode (`open Package.swift`) or run
 
 On first use, macOS will ask you to allow Emebal in
 **System Settings → Privacy & Security → Accessibility**. Emebal needs this to
-detect the double ⌘C shortcut.
+detect the double ⌘C shortcut. Without it, you can still use
+**Translate Clipboard** from the menu-bar icon.
+
+Builds are signed ad hoc, so after rebuilding you may need to turn Emebal off
+and on again in the Accessibility list.
+
+## Tests
+
+```sh
+swift test                        # fast tests only
+EMEBAL_LIVE_TESTS=1 swift test    # also runs a real translation through Claude Code
+```
 
 ## License
 
