@@ -38,7 +38,10 @@ struct TranslationView: View {
                 }
             }
         }
-        .padding(14)
+        .padding([.horizontal, .bottom], 14)
+        // Draw the header inside the title bar, 12 points from the top. The
+        // window's size still counts the title bar, so only the content moves.
+        .padding(.top, 12 - layout.titlebarHeight)
         // The default width is also the smallest one. The view has no maximum,
         // so the panel can be resized freely and the view fills it.
         .frame(

@@ -7,17 +7,22 @@ import SwiftUI
 @Observable
 final class PanelLayout {
     var isResized = false
+    /// Height of the panel's (invisible) title bar. The header is drawn
+    /// inside it, so the panel has no empty strip at the top.
+    var titlebarHeight: CGFloat = 0
 }
 
 /// A floating panel that shows the translations. It doesn't take focus from
-/// the app the text was copied from, can be dragged and resized, and stays
-/// open until the user closes it (✕ or Esc).
+/// the app the text was copied from, and can be dragged and resized. It
+/// closes with ✕ or Esc, and, unless the user turned it off, when they click
+/// in another app.
 @MainActor
 final class TranslationPanel: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     private var hosting: NSHostingView<TranslationView>?
     private var model: TranslationModel?
     private var layout: PanelLayout?
+    private var clickOutsideMonitor: Any?
 
     func show(text: String, settings: AppSettings) {
         // A new translation replaces the open one in the same place, so a
@@ -46,8 +51,6 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         // would stop the user from resizing it.) The intrinsic size is the
         // view's ideal size, which the panel fits until the user resizes it.
         hosting.sizingOptions = [.minSize, .intrinsicContentSize]
-        // Start the content at the top: the title bar has no buttons or title.
-        hosting.safeAreaRegions = []
 
         let panel = NSPanel(
             contentRect: .zero,
@@ -62,6 +65,10 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             panel.standardWindowButton(button)?.isHidden = true
         }
+        // With a full-size content view, the frame includes the title bar but
+        // the layout rect doesn't, so the difference is the title bar height.
+        panel.setContentSize(NSSize(width: 400, height: 300))
+        layout.titlebarHeight = panel.frame.height - panel.contentLayoutRect.height
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -72,7 +79,7 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         if let previousFrame, wasResized {
             panel.setFrame(previousFrame, display: false)
         } else {
-            panel.setContentSize(hosting.intrinsicContentSize)
+            panel.setContentSize(capped(hosting.intrinsicContentSize, on: Self.screenUnderMouse()))
             if let previousFrame {
                 panel.setFrameTopLeftPoint(NSPoint(x: previousFrame.minX, y: previousFrame.maxY))
             } else {
@@ -86,15 +93,45 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         self.model = model
         self.layout = layout
         model.start()
+
+        if settings.closesOnClickOutside {
+            clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.closeIfClickedOutside()
+                }
+            }
+        }
     }
 
     func close() {
+        if let clickOutsideMonitor {
+            NSEvent.removeMonitor(clickOutsideMonitor)
+            self.clickOutsideMonitor = nil
+        }
         model?.cancel()
         model = nil
         panel?.close()
         panel = nil
         hosting = nil
         layout = nil
+    }
+
+    /// Closes the panel, unless the click was on it. Moving and resizing the
+    /// panel are handled by macOS, so those clicks also arrive here, and the
+    /// resize handles reach a few points beyond the panel's edge.
+    private func closeIfClickedOutside() {
+        guard let panel else { return }
+        if panel.frame.insetBy(dx: -8, dy: -8).contains(NSEvent.mouseLocation) { return }
+        close()
+    }
+
+    /// The panel can be dragged by its background, so a double-click there
+    /// counts as a title-bar double-click, which zooms the window to fill the
+    /// screen. The panel sizes itself, or the user resizes it, so never zoom.
+    func windowShouldZoom(_ window: NSWindow, toFrame newFrame: NSRect) -> Bool {
+        false
     }
 
     func windowWillStartLiveResize(_ notification: Notification) {
@@ -107,7 +144,7 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
     /// in place, unless the user has resized it.
     private func fitToContent() {
         guard let panel, let hosting, layout?.isResized == false else { return }
-        let size = hosting.intrinsicContentSize
+        let size = capped(hosting.intrinsicContentSize, on: panel.screen)
         let current = panel.contentRect(forFrameRect: panel.frame).size
         guard size != current else { return }
         let topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
@@ -115,11 +152,25 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         panel.setFrameTopLeftPoint(topLeft)
     }
 
+    /// Limits the size Emebal gives the panel by itself, so long text never
+    /// makes it cover the screen. The user can still make it larger.
+    private func capped(_ size: NSSize, on screen: NSScreen?) -> NSSize {
+        guard let visible = screen?.visibleFrame else { return size }
+        return NSSize(
+            width: min(size.width, visible.width * 0.8),
+            height: min(size.height, visible.height * 0.6)
+        )
+    }
+
+    private static func screenUnderMouse() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+    }
+
     /// Places the panel just below the mouse, kept inside the visible screen.
     private func position(_ panel: NSPanel) {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return }
+        guard let visible = Self.screenUnderMouse()?.visibleFrame else { return }
 
         let size = panel.frame.size
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height - 16)

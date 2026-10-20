@@ -30,6 +30,7 @@ struct EmebalApp: App {
             .disabled(!settings.isClaudeEnabled)
             Divider()
 
+            Toggle("Close When Clicking Outside", isOn: $settings.closesOnClickOutside)
             Toggle("Open at Login", isOn: Binding(
                 get: { loginItem.isEnabled },
                 set: { loginItem.setEnabled($0) }

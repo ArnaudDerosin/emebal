@@ -41,7 +41,8 @@ more natural, a few seconds later.
 - **Two translations side by side**, each with its own Copy button
 - **Turn either engine off** to show only Apple or only Claude, and choose the
   Claude model
-- **Floating panel** that opens near the cursor and stays until you close it
+- **Floating panel** that opens near the cursor and closes when you click
+  elsewhere (or stays open, if you prefer)
 - **Translate Clipboard** from the menu-bar icon, without the shortcut
 - **Open at Login**, so it is always ready in the menu bar
 
@@ -119,7 +120,10 @@ This builds Emebal, moves it to `/Applications` and opens it. Emebal lives in
 the menu bar (the speech-bubble icon), not in the Dock. To have it start
 automatically, turn on **Open at Login** in its menu.
 
-To update, pull the latest changes and run the same command again.
+To update, pull the latest changes and run the same command again. Then, in
+**System Settings → Privacy & Security → Accessibility**, remove Emebal with
+**−** and allow it again: each build has a new signature, so macOS doesn't
+apply the old permission to it, even though the switch still shows on.
 
 To work on the code, open the folder in Xcode (`open Package.swift`) or run
 `swift build`. `./scripts/build-app.sh` without `--install` only builds

@@ -65,6 +65,12 @@ final class AppSettings {
         didSet { defaults.set(isSourceShown, forKey: Keys.sourceShown) }
     }
 
+    /// Close the panel when the user clicks in another app. Off, the panel
+    /// stays until closed (✕ or Esc), so it can be kept aside.
+    var closesOnClickOutside: Bool {
+        didSet { defaults.set(closesOnClickOutside, forKey: Keys.closesOnClickOutside) }
+    }
+
     var claudeModel: ClaudeModel {
         didSet { defaults.set(claudeModel.rawValue, forKey: Keys.claudeModel) }
     }
@@ -78,6 +84,7 @@ final class AppSettings {
         isAppleEnabled = defaults.object(forKey: Keys.appleEnabled) as? Bool ?? true
         isClaudeEnabled = defaults.object(forKey: Keys.claudeEnabled) as? Bool ?? true
         isSourceShown = defaults.object(forKey: Keys.sourceShown) as? Bool ?? true
+        closesOnClickOutside = defaults.object(forKey: Keys.closesOnClickOutside) as? Bool ?? true
         claudeModel = defaults.string(forKey: Keys.claudeModel).flatMap(ClaudeModel.init(rawValue:)) ?? .sonnet
     }
 
@@ -86,6 +93,7 @@ final class AppSettings {
         static let appleEnabled = "appleEnabled"
         static let claudeEnabled = "claudeEnabled"
         static let sourceShown = "sourceShown"
+        static let closesOnClickOutside = "closesOnClickOutside"
         static let claudeModel = "claudeModel"
     }
 }
