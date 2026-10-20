@@ -1,5 +1,27 @@
 import Foundation
 
+/// A Claude translation, with the plan usage Claude Code reported along with it.
+struct ClaudeTranslation: Sendable {
+    let text: String
+    let usage: ClaudeUsage?
+}
+
+/// How much of the user's Claude plan limits is used. Claude Code reports it
+/// with each answer, so reading it costs nothing and needs no credentials.
+/// Only subscriptions (not API keys) have these limits.
+struct ClaudeUsage: Equatable, Sendable {
+    struct Window: Equatable, Sendable {
+        /// From 0 to 1.
+        let usedFraction: Double
+        let resetsAt: Date
+    }
+
+    /// The 5-hour window, what Claude Code calls the current session.
+    let session: Window?
+    /// The 7-day window.
+    let week: Window?
+}
+
 /// Translates by running the user's own, signed-in Claude Code CLI
 /// (`claude -p`). Usage counts toward the user's Claude account.
 enum ClaudeTranslator {
@@ -21,17 +43,63 @@ enum ClaudeTranslator {
         _ text: String,
         into target: TargetLanguage,
         model: ClaudeModel
-    ) async throws -> String {
+    ) async throws -> ClaudeTranslation {
         guard let executable = await ClaudeLocator.find() else {
             throw Failure.notInstalled
         }
         let prompt = prompt(for: text, into: target)
         let runner = ProcessRunner(executable: executable)
-        return try await withTaskCancellationHandler {
+        let output = try await withTaskCancellationHandler {
             try await runner.run(model: model, input: prompt)
         } onCancel: {
             runner.cancel()
         }
+        return try parse(output.stdout, errors: output.stderr)
+    }
+
+    /// Reads the JSON lines that `claude -p --output-format stream-json`
+    /// prints: the answer is in the `result` event, and the plan usage in the
+    /// `rate_limit_event`. The usage format isn't documented, so anything
+    /// unexpected there just leaves the usage out.
+    static func parse(_ output: String, errors: String = "") throws -> ClaudeTranslation {
+        var result: [String: Any]?
+        var usage: ClaudeUsage?
+        for line in output.split(separator: "\n") {
+            guard let event = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any] else {
+                continue
+            }
+            switch event["type"] as? String {
+            case "result":
+                result = event
+            case "rate_limit_event":
+                usage = parseUsage(event) ?? usage
+            default:
+                break
+            }
+        }
+        guard let result, let text = result["result"] as? String else {
+            throw Failure.failed(errors.isEmpty ? output : errors)
+        }
+        if result["is_error"] as? Bool == true {
+            throw Failure.failed(text)
+        }
+        return ClaudeTranslation(text: text.trimmingCharacters(in: .whitespacesAndNewlines), usage: usage)
+    }
+
+    private static func parseUsage(_ event: [String: Any]) -> ClaudeUsage? {
+        let info = event["rate_limit_info"] as? [String: Any]
+        guard let windows = info?["unifiedWindows"] as? [String: Any] else { return nil }
+
+        func window(_ name: String) -> ClaudeUsage.Window? {
+            guard let window = windows[name] as? [String: Any],
+                  let used = (window["utilization"] as? NSNumber)?.doubleValue,
+                  let resetsAt = (window["resetsAt"] as? NSNumber)?.doubleValue
+            else { return nil }
+            return ClaudeUsage.Window(usedFraction: used, resetsAt: Date(timeIntervalSince1970: resetsAt))
+        }
+
+        let usage = ClaudeUsage(session: window("five_hour"), week: window("seven_day"))
+        return usage.session == nil && usage.week == nil ? nil : usage
     }
 
     static func prompt(for text: String, into target: TargetLanguage) -> String {
@@ -98,6 +166,13 @@ enum ClaudeLocator {
     }
 }
 
+/// What `claude` printed. Errors are also reported on stdout, in the
+/// `result` event, so both are kept whatever the exit status.
+private struct ProcessOutput: Sendable {
+    let stdout: String
+    let stderr: String
+}
+
 /// Runs `claude -p` with the prompt on stdin.
 private final class ProcessRunner: @unchecked Sendable {
     private let process = Process()
@@ -109,9 +184,11 @@ private final class ProcessRunner: @unchecked Sendable {
         self.executable = executable
     }
 
-    func run(model: ClaudeModel, input: String) async throws -> String {
+    func run(model: ClaudeModel, input: String) async throws -> ProcessOutput {
         process.executableURL = executable
-        process.arguments = ["-p", "--model", model.rawValue]
+        // stream-json (which needs --verbose) is the output that also carries
+        // the plan usage.
+        process.arguments = ["-p", "--model", model.rawValue, "--output-format", "stream-json", "--verbose"]
         // Give `claude` a usable PATH (for example to find `node` when it was
         // installed with npm), since the app's own PATH is minimal.
         var environment = ProcessInfo.processInfo.environment
@@ -136,16 +213,8 @@ private final class ProcessRunner: @unchecked Sendable {
         let errors = PipeReader(stderr)
 
         return try await withCheckedThrowingContinuation { continuation in
-            process.terminationHandler = { process in
-                let status = process.terminationStatus
-                let out = output.waitForText()
-                let err = errors.waitForText()
-                switch status {
-                case 0:
-                    continuation.resume(returning: out)
-                default:
-                    continuation.resume(throwing: ClaudeTranslator.Failure.failed(err.isEmpty ? out : err))
-                }
+            process.terminationHandler = { _ in
+                continuation.resume(returning: ProcessOutput(stdout: output.waitForText(), stderr: errors.waitForText()))
             }
 
             lock.lock()

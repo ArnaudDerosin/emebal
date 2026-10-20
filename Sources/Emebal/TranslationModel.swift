@@ -21,6 +21,8 @@ final class TranslationModel {
 
     var appleState: TranslationState = .loading
     var claudeState: TranslationState = .loading
+    /// The plan usage Claude Code reported with the last translation.
+    var claudeUsage: ClaudeUsage?
     /// Changing it makes SwiftUI's `.translationTask` run Apple's translation.
     var appleConfiguration: TranslationSession.Configuration?
 
@@ -116,7 +118,8 @@ final class TranslationModel {
             do {
                 let result = try await ClaudeTranslator.translate(text, into: target, model: model)
                 guard !Task.isCancelled else { return }
-                claudeState = .done(result)
+                claudeState = .done(result.text)
+                claudeUsage = result.usage ?? claudeUsage
             } catch is CancellationError {
                 return
             } catch {
