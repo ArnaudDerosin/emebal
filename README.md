@@ -13,8 +13,14 @@ you choose the language you want to read in.
 
 ## Why "Emebal"?
 
-The name comes from the Sumerian **eme-bal**, "interpreter", literally
-*"tongue-turner"* (*eme*, "tongue", and *bal*, "to turn, to cross over").
+The name comes from the Sumerian **eme-bal** (𒅴𒁄), "interpreter", literally
+*"tongue-turner"*:
+
+| Sign | Reading | Meaning |
+|---|---|---|
+| 𒅴 | *eme* | "tongue", written as the sign for "mouth" with ME inside it |
+| 𒁄 | *bal* | "to turn, to cross over" |
+
 It is one of the oldest known words for a translator: interpreters with this
 title appear in Mesopotamian records from over 4,000 years ago.
 
