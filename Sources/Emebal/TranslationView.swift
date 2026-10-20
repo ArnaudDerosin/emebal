@@ -63,47 +63,102 @@ struct TranslationView: View {
 }
 
 /// The target language, shown as a quiet button that opens the language list.
-private struct TargetLanguageMenu: View {
+///
+/// SwiftUI's `Menu` on macOS rearranges a custom label into "icon + title", so
+/// the chevron would come first. The button is drawn in SwiftUI instead, and a
+/// native menu is opened under it on click.
+struct TargetLanguageMenu: View {
     let model: TranslationModel
     @State private var isHovered = false
+    @State private var anchor = MenuAnchor()
 
     var body: some View {
-        Menu {
-            Picker("Translate Into", selection: Binding(
-                get: { model.target.id },
-                set: { id in
-                    if let language = TargetLanguage.all.first(where: { $0.id == id }) {
-                        model.setTarget(language)
-                    }
-                }
-            )) {
-                ForEach(TargetLanguage.all) { language in
-                    Text(language.nativeName).tag(language.id)
-                }
-            }
-            .pickerStyle(.inline)
-            .labelsHidden()
-        } label: {
-            HStack(spacing: 4) {
-                Text(model.target.nativeName)
-                    .fontWeight(.medium)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovered ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
-            )
-            .contentShape(Rectangle())
+        Button(action: showMenu) {
+            TargetLanguageLabel(name: model.target.nativeName, isHovered: isHovered)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .background(MenuAnchorView(anchor: anchor))
         .fixedSize()
         .onHover { isHovered = $0 }
         .help("Change the language to translate into")
+    }
+
+    private func showMenu() {
+        guard let view = anchor.view else { return }
+        let menu = NSMenu()
+        for language in TargetLanguage.all {
+            let item = ClosureMenuItem(title: language.nativeName) {
+                model.setTarget(language)
+            }
+            item.state = language.id == model.target.id ? .on : .off
+            menu.addItem(item)
+        }
+        // Open the menu just below the button.
+        let below = NSPoint(x: 0, y: view.isFlipped ? view.bounds.height + 4 : -4)
+        menu.popUp(positioning: nil, at: below, in: view)
+    }
+}
+
+/// "English ⌄": the language name, then the chevron.
+struct TargetLanguageLabel: View {
+    let name: String
+    let isHovered: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(name)
+                .fontWeight(.medium)
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isHovered ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
+        )
+        .contentShape(Rectangle())
+    }
+}
+
+/// Holds the AppKit view behind the button, to position the menu.
+@MainActor
+final class MenuAnchor {
+    weak var view: NSView?
+}
+
+private struct MenuAnchorView: NSViewRepresentable {
+    let anchor: MenuAnchor
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        anchor.view = view
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        anchor.view = nsView
+    }
+}
+
+/// A menu item that runs a closure when chosen.
+private final class ClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(choose), keyEquivalent: "")
+        target = self
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    @objc private func choose() {
+        handler()
     }
 }
 
