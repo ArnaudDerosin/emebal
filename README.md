@@ -70,9 +70,13 @@ more natural, a few seconds later.
 
 ### Set up Claude (optional)
 
-Apple Translation works out of the box. For Claude translations, Emebal runs
-the Claude Code CLI on your Mac, so it needs to be installed and signed in
-once:
+Apple Translation works out of the box. For Claude translations, install
+[Claude Code](https://claude.com/claude-code) and sign in once.
+
+<details>
+<summary>Show setup steps</summary>
+
+<br>
 
 1. Install Claude Code:
 
@@ -96,6 +100,8 @@ That's all: Emebal finds `claude` on its own and uses your sign-in. It never
 sees your credentials, and usage counts toward your own Claude plan or API key.
 Without Claude Code, Emebal shows only the Apple translation, and you can turn
 Claude off in the menu.
+
+</details>
 
 ### Install
 
