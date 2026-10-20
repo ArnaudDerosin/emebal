@@ -18,7 +18,7 @@ struct TranslationView: View {
             } else {
                 HStack(alignment: .top, spacing: 10) {
                     if model.isSourceShown {
-                        EngineColumn(title: "Original", state: .done(model.text), fillsHeight: layout.isResized)
+                        EngineColumn(title: "Original", state: .done(model.text), isMuted: true, fillsHeight: layout.isResized)
                     }
                     if model.isAppleEnabled {
                         EngineColumn(
@@ -29,7 +29,11 @@ struct TranslationView: View {
                         )
                     }
                     if model.isClaudeEnabled {
-                        EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized)
+                        EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized) {
+                            if let usage = model.claudeUsage {
+                                ClaudeUsageLabel(usage: usage)
+                            }
+                        }
                     }
                 }
             }
@@ -56,6 +60,7 @@ struct TranslationView: View {
         }
         .onChange(of: model.appleState) { onContentChange() }
         .onChange(of: model.claudeState) { onContentChange() }
+        .onChange(of: model.claudeUsage) { onContentChange() }
         .onChange(of: model.isAppleEnabled) { onContentChange() }
         .onChange(of: model.isClaudeEnabled) { onContentChange() }
         .onChange(of: model.isSourceShown) { onContentChange() }
@@ -130,7 +135,7 @@ struct TargetLanguageMenu: View {
     }
 }
 
-/// "日本語 (Detected)": the source language, with a lighter hint that the app
+/// "日本語 (Detected)": the source language, with a hint that the app
 /// found it on its own.
 struct SourceLanguageLabel: View {
     let name: String
@@ -142,7 +147,7 @@ struct SourceLanguageLabel: View {
                 .foregroundStyle(.secondary)
             if isDetected {
                 Text("(Detected)")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .help(isDetected ? "Language detected automatically" : "The language couldn't be detected")
@@ -212,12 +217,17 @@ private final class ClosureMenuItem: NSMenuItem {
     }
 }
 
-private struct EngineColumn: View {
+private struct EngineColumn<Footnote: View>: View {
     let title: String
     let state: TranslationState
+    /// Shows the text in the same gray as the source language, for the
+    /// original text, which is there for reference.
+    var isMuted = false
     /// Fill the panel's height instead of growing with the text up to a limit.
     var fillsHeight = false
     var onDownload: (() -> Void)? = nil
+    /// A small line next to the Copy button.
+    @ViewBuilder var footnote: () -> Footnote
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -230,6 +240,7 @@ private struct EngineColumn: View {
             }
             .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 320)
             HStack {
+                footnote()
                 Spacer()
                 Button("Copy") {
                     guard case .done(let text) = state else { return }
@@ -254,6 +265,7 @@ private struct EngineColumn: View {
             }
         case .done(let text):
             Text(text)
+                .foregroundStyle(isMuted ? .secondary : .primary)
                 .textSelection(.enabled)
         case .failed(let message):
             Text(message)
@@ -273,5 +285,74 @@ private struct EngineColumn: View {
     private var isDone: Bool {
         if case .done = state { return true }
         return false
+    }
+}
+
+extension EngineColumn where Footnote == EmptyView {
+    init(
+        title: String,
+        state: TranslationState,
+        isMuted: Bool = false,
+        fillsHeight: Bool = false,
+        onDownload: (() -> Void)? = nil
+    ) {
+        self.init(title: title, state: state, isMuted: isMuted, fillsHeight: fillsHeight, onDownload: onDownload) {
+            EmptyView()
+        }
+    }
+}
+
+/// "Session 6% · resets in 2h 35m · Week 8%": the Claude plan usage, kept
+/// up to date as time passes. The tooltip gives both reset times.
+private struct ClaudeUsageLabel: View {
+    let usage: ClaudeUsage
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            Text(summary(now: context.date))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .help(details)
+        }
+    }
+
+    private func summary(now: Date) -> String {
+        var parts: [String] = []
+        if let session = usage.session {
+            parts.append("Session \(percent(session))")
+            if session.resetsAt > now {
+                parts.append("resets in \(timeLeft(until: session.resetsAt, from: now))")
+            }
+        }
+        if let week = usage.week {
+            parts.append("Week \(percent(week))")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private var details: String {
+        var lines = ["Your Claude plan usage, as of the last translation."]
+        if let session = usage.session {
+            lines.append("Current session: \(percent(session)) used, resets \(resetTime(session))")
+        }
+        if let week = usage.week {
+            lines.append("Current week: \(percent(week)) used, resets \(resetTime(week))")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func percent(_ window: ClaudeUsage.Window) -> String {
+        "\(Int((window.usedFraction * 100).rounded()))%"
+    }
+
+    private func resetTime(_ window: ClaudeUsage.Window) -> String {
+        window.resetsAt.formatted(.dateTime.weekday(.wide).hour().minute())
+    }
+
+    /// "2h 35m", or "35m" under an hour.
+    private func timeLeft(until date: Date, from now: Date) -> String {
+        let minutes = max(1, Int((date.timeIntervalSince(now) / 60).rounded(.up)))
+        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
 }
