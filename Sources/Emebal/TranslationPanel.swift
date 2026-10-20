@@ -1,15 +1,18 @@
 import AppKit
 import SwiftUI
 
-/// A floating panel near the mouse that shows the translations. It doesn't
-/// take focus from the app the text was copied from.
+/// A floating panel that shows the translations. It doesn't take focus from
+/// the app the text was copied from, can be dragged anywhere, and stays open
+/// until the user closes it (✕ or Esc).
 @MainActor
 final class TranslationPanel {
     private var panel: NSPanel?
     private var model: TranslationModel?
-    private var clickOutsideMonitor: Any?
 
     func show(text: String, settings: AppSettings) {
+        // A new translation replaces the open one in the same place, so a
+        // panel the user moved aside stays where they put it.
+        let previousTopLeft = panel.map { NSPoint(x: $0.frame.minX, y: $0.frame.maxY) }
         close()
 
         let model = TranslationModel(text: text, settings: settings)
@@ -34,19 +37,16 @@ final class TranslationPanel {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.contentViewController = hosting
         panel.setContentSize(hosting.view.fittingSize)
-        position(panel)
+        if let previousTopLeft {
+            panel.setFrameTopLeftPoint(previousTopLeft)
+        } else {
+            position(panel)
+        }
         panel.orderFrontRegardless()
 
         self.panel = panel
         self.model = model
         model.start()
-
-        // Close when the user clicks in another app.
-        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.close()
-            }
-        }
     }
 
     func close() {
@@ -54,10 +54,6 @@ final class TranslationPanel {
         model = nil
         panel?.close()
         panel = nil
-        if let monitor = clickOutsideMonitor {
-            NSEvent.removeMonitor(monitor)
-            clickOutsideMonitor = nil
-        }
     }
 
     /// Places the panel just below the mouse, kept inside the visible screen.
