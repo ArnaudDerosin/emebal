@@ -69,8 +69,22 @@ On first use, macOS will ask you to allow Emebal in
 detect the double ⌘C shortcut. Without it, you can still use
 **Translate Clipboard** from the menu-bar icon.
 
-Builds are signed ad hoc, so after rebuilding you may need to turn Emebal off
-and on again in the Accessibility list.
+macOS ties the Accessibility permission to the app's signature. Builds are
+signed ad hoc by default, which changes on every build, so the permission stops
+working after a rebuild. To fix it once:
+
+```sh
+tccutil reset Accessibility io.github.arnaudderosin.emebal
+```
+
+then open the app again and allow it. To keep the permission across rebuilds,
+create a self-signed code-signing certificate (Keychain Access → Certificate
+Assistant → Create a Certificate…, Identity Type **Self Signed Root**,
+Certificate Type **Code Signing**) and build with it:
+
+```sh
+EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh
+```
 
 ## Tests
 

@@ -15,8 +15,15 @@ mkdir -p "$APP/Contents/MacOS"
 cp "$(swift build -c release --show-bin-path)/Emebal" "$APP/Contents/MacOS/Emebal"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
-# Ad-hoc signature so macOS can remember the Accessibility permission
-# for this app between launches.
-codesign --force --sign - "$APP"
+# macOS ties the Accessibility permission to the app's signature. An ad-hoc
+# signature changes on every build, so the permission is lost after each
+# rebuild. Set EMEBAL_SIGN_IDENTITY to a stable code-signing identity (for
+# example a self-signed "Emebal Local Signing" certificate) to keep it.
+IDENTITY="${EMEBAL_SIGN_IDENTITY:--}"
+codesign --force --sign "$IDENTITY" "$APP"
 
-echo "Built $APP"
+if [ "$IDENTITY" = "-" ]; then
+  echo "Built $APP (ad-hoc signed: re-allow Accessibility after each rebuild)"
+else
+  echo "Built $APP (signed with \"$IDENTITY\")"
+fi
