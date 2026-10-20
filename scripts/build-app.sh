@@ -10,10 +10,11 @@ swift build -c release
 
 APP="build/Emebal.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$(swift build -c release --show-bin-path)/Emebal" "$APP/Contents/MacOS/Emebal"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/Emebal.icns "$APP/Contents/Resources/Emebal.icns"
 
 # macOS ties the Accessibility permission to the app's signature. An ad-hoc
 # signature changes on every build, so the permission is lost after each
