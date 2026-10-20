@@ -22,8 +22,11 @@ enum ClaudeTranslator {
         into target: TargetLanguage,
         model: ClaudeModel
     ) async throws -> String {
+        guard let executable = await ClaudeLocator.find() else {
+            throw Failure.notInstalled
+        }
         let prompt = prompt(for: text, into: target)
-        let runner = ProcessRunner()
+        let runner = ProcessRunner(executable: executable)
         return try await withTaskCancellationHandler {
             try await runner.run(model: model, input: prompt)
         } onCancel: {
@@ -50,17 +53,71 @@ enum ClaudeTranslator {
     }
 }
 
-/// Runs `claude -p` through the user's login shell. Apps opened from Finder
-/// don't get the shell's PATH, so `claude` (often in ~/.local/bin) would not be
-/// found if it were launched directly.
+/// Finds the `claude` executable. Apps opened from Finder get a minimal PATH,
+/// and installers usually add `claude` to the PATH in ~/.zshrc, which only
+/// interactive shells read. So check the usual install locations first, then
+/// ask an interactive login shell as a fallback.
+enum ClaudeLocator {
+    static func find() async -> URL? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let candidates = [
+            "\(home)/.local/bin/claude",          // native installer
+            "\(home)/.claude/local/claude",       // older local install
+            "/opt/homebrew/bin/claude",           // Homebrew / npm on Apple silicon
+            "/usr/local/bin/claude",              // Homebrew / npm on Intel
+            "\(home)/.npm-global/bin/claude",
+            "\(home)/.bun/bin/claude",
+        ]
+        if let path = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) {
+            return URL(fileURLWithPath: path)
+        }
+        return await findWithInteractiveShell()
+    }
+
+    private static func findWithInteractiveShell() async -> URL? {
+        await Task.detached {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            // -i reads ~/.zshrc, where the PATH is usually set.
+            process.arguments = ["-ilc", "command -v claude"]
+            let output = Pipe()
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            process.standardInput = FileHandle.nullDevice
+            guard (try? process.run()) != nil else { return nil }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            // Shell startup files may print other lines; the path is the last one.
+            let path = String(decoding: data, as: UTF8.self)
+                .split(separator: "\n")
+                .last { $0.hasPrefix("/") }
+                .map(String.init)
+            guard let path, FileManager.default.isExecutableFile(atPath: path) else { return nil }
+            return URL(fileURLWithPath: path)
+        }.value
+    }
+}
+
+/// Runs `claude -p` with the prompt on stdin.
 private final class ProcessRunner: @unchecked Sendable {
     private let process = Process()
+    private let executable: URL
     private let lock = NSLock()
     private var isCancelled = false
 
+    init(executable: URL) {
+        self.executable = executable
+    }
+
     func run(model: ClaudeModel, input: String) async throws -> String {
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-lc", "exec claude -p --model \(model.rawValue)"]
+        process.executableURL = executable
+        process.arguments = ["-p", "--model", model.rawValue]
+        // Give `claude` a usable PATH (for example to find `node` when it was
+        // installed with npm), since the app's own PATH is minimal.
+        var environment = ProcessInfo.processInfo.environment
+        let extraPaths = [executable.deletingLastPathComponent().path, "/opt/homebrew/bin", "/usr/local/bin"]
+        environment["PATH"] = (extraPaths + [environment["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
+        process.environment = environment
         // An empty working directory, so no project's CLAUDE.md is picked up.
         let workDir = FileManager.default.temporaryDirectory.appendingPathComponent("emebal", isDirectory: true)
         try? FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
@@ -86,9 +143,6 @@ private final class ProcessRunner: @unchecked Sendable {
                 switch status {
                 case 0:
                     continuation.resume(returning: out)
-                case 127:
-                    // The shell couldn't find `claude`.
-                    continuation.resume(throwing: ClaudeTranslator.Failure.notInstalled)
                 default:
                     continuation.resume(throwing: ClaudeTranslator.Failure.failed(err.isEmpty ? out : err))
                 }

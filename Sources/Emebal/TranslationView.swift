@@ -15,7 +15,11 @@ struct TranslationView: View {
             } else {
                 HStack(alignment: .top, spacing: 10) {
                     if model.isAppleEnabled {
-                        EngineColumn(title: "Apple · on-device", state: model.appleState)
+                        EngineColumn(
+                            title: "Apple · on-device",
+                            state: model.appleState,
+                            onDownload: model.downloadAppleLanguages
+                        )
                     }
                     if model.isClaudeEnabled {
                         EngineColumn(title: "Claude", state: model.claudeState)
@@ -63,6 +67,7 @@ struct TranslationView: View {
 private struct EngineColumn: View {
     let title: String
     let state: TranslationState
+    var onDownload: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -104,6 +109,14 @@ private struct EngineColumn: View {
             Text(message)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
+        case .needsDownload(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Text(message)
+                    .foregroundStyle(.secondary)
+                if let onDownload {
+                    Button("Download…", action: onDownload)
+                }
+            }
         }
     }
 

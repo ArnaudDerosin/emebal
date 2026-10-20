@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import Translation
@@ -6,6 +7,8 @@ enum TranslationState: Equatable {
     case loading
     case done(String)
     case failed(String)
+    /// Apple supports the pair, but the languages aren't downloaded yet.
+    case needsDownload(String)
 }
 
 /// One translation request: the copied text and the result of each engine.
@@ -73,8 +76,8 @@ final class TranslationModel {
                     target: target.localeLanguage
                 )
             case .supported:
-                appleState = .failed(
-                    "Download \(sourceName) and \(target.nativeName) in System Settings → General → Language & Region → Translation Languages."
+                appleState = .needsDownload(
+                    "Apple needs to download \(sourceName) → \(target.nativeName) once to translate on this Mac."
                 )
             case .unsupported:
                 appleState = .failed("Apple can't translate \(sourceName) to \(target.nativeName).")
@@ -82,6 +85,17 @@ final class TranslationModel {
                 appleState = .failed("Apple Translation isn't available.")
             }
         }
+    }
+
+    /// Starts Apple's translation anyway: the framework then shows its own
+    /// prompt to download the missing languages.
+    func downloadAppleLanguages() {
+        guard let source = sourceLanguage else { return }
+        appleState = .loading
+        // The panel doesn't take focus, but the download prompt needs the app
+        // to be active to appear.
+        NSApplication.shared.activate()
+        appleConfiguration = TranslationSession.Configuration(source: source, target: target.localeLanguage)
     }
 
     /// Receives Apple's result from the view's `.translationTask`.
