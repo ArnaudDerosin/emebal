@@ -39,6 +39,7 @@ more natural, a few seconds later.
   Claude model
 - **Floating panel** that opens near the cursor and stays until you close it
 - **Translate Clipboard** from the menu-bar icon, without the shortcut
+- **Open at Login**, so it is always ready in the menu bar
 
 ## How it works
 
@@ -65,19 +66,65 @@ more natural, a few seconds later.
 - macOS 15 or later (for Apple Translation)
 - Xcode 16 or later (Swift 6) to build from source
 - Optional: [Claude Code](https://claude.com/claude-code), installed and signed
-  in, for Claude translations
+  in, for Claude translations (see below)
 
-### Build and run
+### Set up Claude (optional)
+
+Apple Translation works out of the box. For Claude translations, Emebal runs
+the Claude Code CLI on your Mac, so it needs to be installed and signed in
+once:
+
+1. Install Claude Code:
+
+   ```sh
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+
+   Other ways to install (Homebrew, npm) are in the
+   [Claude Code docs](https://code.claude.com/docs/en/setup).
+
+2. Run `claude` in a terminal and sign in with your Claude account or an
+   Anthropic Console API key.
+
+3. Check that it works:
+
+   ```sh
+   claude -p "Say hello"
+   ```
+
+That's all: Emebal finds `claude` on its own and uses your sign-in. It never
+sees your credentials, and usage counts toward your own Claude plan or API key.
+Without Claude Code, Emebal shows only the Apple translation, and you can turn
+Claude off in the menu.
+
+### Install
 
 ```sh
 git clone https://github.com/ArnaudDerosin/emebal.git
 cd emebal
-./scripts/build-app.sh
-open build/Emebal.app
+./scripts/build-app.sh --install
 ```
 
+This builds Emebal, moves it to `/Applications` and opens it. Emebal lives in
+the menu bar (the speech-bubble icon), not in the Dock. To have it start
+automatically, turn on **Open at Login** in its menu.
+
+To update, pull the latest changes and run the same command again.
+
 To work on the code, open the folder in Xcode (`open Package.swift`) or run
-`swift build`.
+`swift build`. `./scripts/build-app.sh` without `--install` only builds
+`build/Emebal.app`.
+
+### Uninstall
+
+1. In the menu-bar icon's menu, turn off **Open at Login** if it is on, then
+   choose **Quit Emebal**.
+2. Drag **Emebal** from Applications to the Trash.
+3. Optionally, remove what it leaves behind:
+   - Emebal in **System Settings → Privacy & Security → Accessibility**
+     (select it and click **−**)
+   - its preferences:
+     `defaults delete io.github.arnaudderosin.emebal`
 
 ### Allow Accessibility
 
@@ -104,7 +151,7 @@ Assistant → Create a Certificate…, Identity Type **Self Signed Root**,
 Certificate Type **Code Signing**) and build with it:
 
 ```sh
-EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh
+EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh --install
 ```
 
 </details>

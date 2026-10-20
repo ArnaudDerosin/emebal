@@ -4,7 +4,10 @@ import SwiftUI
 
 struct TranslationView: View {
     @Bindable var model: TranslationModel
+    let layout: PanelLayout
     let onClose: () -> Void
+    /// Called when the content may need a different size.
+    var onContentChange: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -14,21 +17,33 @@ struct TranslationView: View {
                     .foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .top, spacing: 10) {
+                    if model.isSourceShown {
+                        EngineColumn(title: "Original", state: .done(model.text), fillsHeight: layout.isResized)
+                    }
                     if model.isAppleEnabled {
                         EngineColumn(
                             title: "Apple · on-device",
                             state: model.appleState,
+                            fillsHeight: layout.isResized,
                             onDownload: model.downloadAppleLanguages
                         )
                     }
                     if model.isClaudeEnabled {
-                        EngineColumn(title: "Claude", state: model.claudeState)
+                        EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized)
                     }
                 }
             }
         }
         .padding(14)
-        .frame(width: model.isAppleEnabled && model.isClaudeEnabled ? 640 : 360)
+        // The default width is also the smallest one. The view has no maximum,
+        // so the panel can be resized freely and the view fills it.
+        .frame(
+            minWidth: defaultWidth,
+            idealWidth: defaultWidth,
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
         .translationTask(model.appleConfiguration) { session in
             // The session must stay in this closure; only the result is passed on.
             let state: TranslationState
@@ -39,10 +54,28 @@ struct TranslationView: View {
             }
             model.setAppleState(state)
         }
+        .onChange(of: model.appleState) { onContentChange() }
+        .onChange(of: model.claudeState) { onContentChange() }
+        .onChange(of: model.isAppleEnabled) { onContentChange() }
+        .onChange(of: model.isClaudeEnabled) { onContentChange() }
+        .onChange(of: model.isSourceShown) { onContentChange() }
+    }
+
+    /// About 300 points per column, plus the spacing between them.
+    private var defaultWidth: CGFloat {
+        let engines = [model.isAppleEnabled, model.isClaudeEnabled].filter { $0 }.count
+        let columns = engines == 0 ? 1 : engines + (model.isSourceShown ? 1 : 0)
+        return [360, 640, 920][min(columns, 3) - 1]
     }
 
     private var header: some View {
         HStack(spacing: 6) {
+            Image(nsImage: MenuBarIcon.image)
+                .resizable()
+                .frame(width: 16, height: 16)
+                .foregroundStyle(.primary)
+                .padding(.trailing, 4)
+                .accessibilityHidden(true)
             SourceLanguageLabel(name: model.sourceName, isDetected: model.sourceLanguage != nil)
             Image(systemName: "arrow.right")
                 .font(.caption.weight(.semibold))
@@ -182,6 +215,8 @@ private final class ClosureMenuItem: NSMenuItem {
 private struct EngineColumn: View {
     let title: String
     let state: TranslationState
+    /// Fill the panel's height instead of growing with the text up to a limit.
+    var fillsHeight = false
     var onDownload: (() -> Void)? = nil
 
     var body: some View {
@@ -193,7 +228,7 @@ private struct EngineColumn: View {
                 content
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 60, maxHeight: 320)
+            .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 320)
             HStack {
                 Spacer()
                 Button("Copy") {
@@ -205,7 +240,7 @@ private struct EngineColumn: View {
             }
         }
         .padding(10)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 

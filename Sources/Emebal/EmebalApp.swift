@@ -5,6 +5,7 @@ import SwiftUI
 struct EmebalApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var settings = AppSettings.shared
+    @State private var loginItem = LoginItem.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -18,6 +19,7 @@ struct EmebalApp: App {
                     Text(language.nativeName).tag(language.id)
                 }
             }
+            Toggle("Show Original Text", isOn: $settings.isSourceShown)
             Toggle("Apple Translation", isOn: $settings.isAppleEnabled)
             Toggle("Claude", isOn: $settings.isClaudeEnabled)
             Picker("Claude Model", selection: $settings.claudeModel) {
@@ -26,6 +28,13 @@ struct EmebalApp: App {
                 }
             }
             .disabled(!settings.isClaudeEnabled)
+            Divider()
+
+            Toggle("Open at Login", isOn: Binding(
+                get: { loginItem.isEnabled },
+                set: { loginItem.setEnabled($0) }
+            ))
+            .onAppear { loginItem.refresh() }
             Divider()
 
             if !DoubleCopyMonitor.isTrusted {

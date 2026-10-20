@@ -60,6 +60,11 @@ final class AppSettings {
         didSet { defaults.set(isClaudeEnabled, forKey: Keys.claudeEnabled) }
     }
 
+    /// Show the copied text in its own column, left of the translations.
+    var isSourceShown: Bool {
+        didSet { defaults.set(isSourceShown, forKey: Keys.sourceShown) }
+    }
+
     var claudeModel: ClaudeModel {
         didSet { defaults.set(claudeModel.rawValue, forKey: Keys.claudeModel) }
     }
@@ -72,6 +77,7 @@ final class AppSettings {
         targetLanguageID = defaults.string(forKey: Keys.targetLanguage) ?? "en"
         isAppleEnabled = defaults.object(forKey: Keys.appleEnabled) as? Bool ?? true
         isClaudeEnabled = defaults.object(forKey: Keys.claudeEnabled) as? Bool ?? true
+        isSourceShown = defaults.object(forKey: Keys.sourceShown) as? Bool ?? true
         claudeModel = defaults.string(forKey: Keys.claudeModel).flatMap(ClaudeModel.init(rawValue:)) ?? .sonnet
     }
 
@@ -79,6 +85,7 @@ final class AppSettings {
         static let targetLanguage = "targetLanguage"
         static let appleEnabled = "appleEnabled"
         static let claudeEnabled = "claudeEnabled"
+        static let sourceShown = "sourceShown"
         static let claudeModel = "claudeModel"
     }
 }

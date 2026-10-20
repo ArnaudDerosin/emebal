@@ -35,6 +35,7 @@ final class TranslationModel {
     var target: TargetLanguage { settings.targetLanguage }
     var isAppleEnabled: Bool { settings.isAppleEnabled }
     var isClaudeEnabled: Bool { settings.isClaudeEnabled }
+    var isSourceShown: Bool { settings.isSourceShown }
 
     var sourceName: String {
         sourceLanguage.map(LanguageDetection.nativeName(of:)) ?? "Unknown language"
