@@ -7,7 +7,7 @@ struct EmebalApp: App {
     @State private var settings = AppSettings.shared
 
     var body: some Scene {
-        MenuBarExtra("Emebal", systemImage: "character.bubble") {
+        MenuBarExtra {
             Button("Translate Clipboard") {
                 appDelegate.translateClipboard()
             }
@@ -38,6 +38,8 @@ struct EmebalApp: App {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q")
+        } label: {
+            Image(nsImage: MenuBarIcon.image)
         }
     }
 }
