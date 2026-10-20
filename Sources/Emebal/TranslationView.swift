@@ -236,7 +236,7 @@ private final class ClosureMenuItem: NSMenuItem {
 }
 
 private struct EngineColumn<Footnote: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let state: TranslationState
     /// Shows the text in the same gray as the source language, for the
     /// original text, which is there for reference.
@@ -308,7 +308,7 @@ private struct EngineColumn<Footnote: View>: View {
 
 extension EngineColumn where Footnote == EmptyView {
     init(
-        title: String,
+        title: LocalizedStringKey,
         state: TranslationState,
         isMuted: Bool = false,
         fillsHeight: Bool = false,
@@ -338,24 +338,24 @@ private struct ClaudeUsageLabel: View {
     private func summary(now: Date) -> String {
         var parts: [String] = []
         if let session = usage.session {
-            parts.append("Session \(percent(session))")
+            parts.append(String(localized: "Session \(percent(session))"))
             if session.resetsAt > now {
-                parts.append("resets in \(timeLeft(until: session.resetsAt, from: now))")
+                parts.append(String(localized: "resets in \(timeLeft(until: session.resetsAt, from: now))"))
             }
         }
         if let week = usage.week {
-            parts.append("Week \(percent(week))")
+            parts.append(String(localized: "Week \(percent(week))"))
         }
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: String(localized: " · ", comment: "Separates the parts of the Claude usage line."))
     }
 
     private var details: String {
-        var lines = ["Your Claude plan usage, as of the last translation."]
+        var lines = [String(localized: "Your Claude plan usage, as of the last translation.")]
         if let session = usage.session {
-            lines.append("Current session: \(percent(session)) used, resets \(resetTime(session))")
+            lines.append(String(localized: "Current session: \(percent(session)) used, resets \(resetTime(session))"))
         }
         if let week = usage.week {
-            lines.append("Current week: \(percent(week)) used, resets \(resetTime(week))")
+            lines.append(String(localized: "Current week: \(percent(week)) used, resets \(resetTime(week))"))
         }
         return lines.joined(separator: "\n")
     }
@@ -368,9 +368,13 @@ private struct ClaudeUsageLabel: View {
         window.resetsAt.formatted(.dateTime.weekday(.wide).hour().minute())
     }
 
-    /// "2h 35m", or "35m" under an hour.
+    /// "2h 35m" in English, "2時間35分" in Japanese: the formatter follows
+    /// the user's language.
     private func timeLeft(until date: Date, from now: Date) -> String {
         let minutes = max(1, Int((date.timeIntervalSince(now) / 60).rounded(.up)))
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .abbreviated
+        formatter.allowedUnits = minutes >= 60 ? [.hour, .minute] : [.minute]
+        return formatter.string(from: TimeInterval(minutes * 60)) ?? "\(minutes)m"
     }
 }

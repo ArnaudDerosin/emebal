@@ -34,8 +34,8 @@ enum ClaudeModel: String, CaseIterable, Identifiable, Sendable {
 
     var displayName: String {
         switch self {
-        case .sonnet: "Sonnet (most natural)"
-        case .haiku: "Haiku (lighter)"
+        case .sonnet: String(localized: "Sonnet (most natural)")
+        case .haiku: String(localized: "Haiku (lighter)")
         }
     }
 }

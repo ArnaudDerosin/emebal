@@ -10,6 +10,8 @@
 	<string>io.github.arnaudderosin.emebal</string>
 	<key>CFBundleExecutable</key>
 	<string>Emebal</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleIconFile</key>
 	<string>Emebal</string>
 	<key>CFBundlePackageType</key>

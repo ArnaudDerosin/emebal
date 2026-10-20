@@ -32,9 +32,9 @@ enum ClaudeTranslator {
         var errorDescription: String? {
             switch self {
             case .notInstalled:
-                "Claude Code not found. Install it and sign in, or turn Claude off in the menu."
+                String(localized: "Claude Code not found. Install it and sign in, or turn Claude off in the menu.")
             case .failed(let message):
-                message.isEmpty ? "Claude Code failed." : message
+                message.isEmpty ? String(localized: "Claude Code failed.") : message
             }
         }
     }

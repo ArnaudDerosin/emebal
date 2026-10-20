@@ -21,6 +21,20 @@ enum LanguageDetection {
             .capitalized(with: locale) ?? id
     }
 
+    /// The language's name in the app's own language, e.g. "英語" for English
+    /// when Emebal is in Japanese. Reads better than the native name inside a
+    /// sentence.
+    static func name(of language: Locale.Language) -> String {
+        let code = language.languageCode?.identifier ?? language.maximalIdentifier
+        return appLocale.localizedString(forLanguageCode: code) ?? nativeName(of: language)
+    }
+
+    /// The language Emebal's interface is shown in, which can differ from the
+    /// Mac's region format (`Locale.current`).
+    private static var appLocale: Locale {
+        Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+    }
+
     /// Whether two languages are the same for translation purposes
     /// (e.g. "en" and "en-US" are).
     static func isSame(_ a: Locale.Language, _ b: Locale.Language) -> Bool {

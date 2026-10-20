@@ -40,7 +40,7 @@ final class TranslationModel {
     var isSourceShown: Bool { settings.isSourceShown }
 
     var sourceName: String {
-        sourceLanguage.map(LanguageDetection.nativeName(of:)) ?? "Unknown language"
+        sourceLanguage.map(LanguageDetection.nativeName(of:)) ?? String(localized: "Unknown language")
     }
 
     func setTarget(_ language: TargetLanguage) {
@@ -63,7 +63,7 @@ final class TranslationModel {
     private func startApple() {
         appleState = .loading
         guard let source = sourceLanguage else {
-            appleState = .failed("Couldn't detect the language of this text.")
+            appleState = .failed(String(localized: "Couldn't detect the language of this text."))
             return
         }
         if LanguageDetection.isSame(source, target.localeLanguage) {
@@ -80,12 +80,12 @@ final class TranslationModel {
                 )
             case .supported:
                 appleState = .needsDownload(
-                    "Apple needs to download \(sourceName) → \(target.nativeName) once to translate on this Mac."
+                    String(localized: "Apple needs to download \(LanguageDetection.name(of: source)) → \(LanguageDetection.name(of: target.localeLanguage)) once to translate on this Mac.")
                 )
             case .unsupported:
-                appleState = .failed("Apple can't translate \(sourceName) to \(target.nativeName).")
+                appleState = .failed(String(localized: "Apple can't translate \(LanguageDetection.name(of: source)) to \(LanguageDetection.name(of: target.localeLanguage))."))
             @unknown default:
-                appleState = .failed("Apple Translation isn't available.")
+                appleState = .failed(String(localized: "Apple Translation isn't available."))
             }
         }
     }

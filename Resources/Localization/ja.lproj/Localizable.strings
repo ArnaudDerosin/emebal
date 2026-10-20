@@ -1,0 +1,77 @@
+/* Japanese. Keys are the English text; translate only the values.
+   Use %1$@, %2$@… when the order of the inserted values changes. */
+
+/* Separates the parts of the Claude usage line. */
+" · " = "・";
+
+"(Detected)" = "（自動検出）";
+
+"Allow Accessibility to Use ⌘C ⌘C…" = "⌘C ⌘C を使うためにアクセシビリティを許可…";
+
+"Apple can't translate %@ to %@." = "Apple の翻訳では、%1$@から%2$@には翻訳できません。";
+
+"Apple needs to download %@ → %@ once to translate on this Mac." = "この Mac で翻訳するには、%1$@ → %2$@ の言語データを一度ダウンロードする必要があります。";
+
+"Apple Translation" = "Apple の翻訳";
+
+"Apple Translation isn't available." = "Apple の翻訳を利用できません。";
+
+"Apple · on-device" = "Apple・オンデバイス";
+
+"Both engines are turned off. Turn one on in the Emebal menu." = "翻訳エンジンがどちらもオフになっています。Emebal のメニューでどちらかをオンにしてください。";
+
+"Change the language to translate into" = "翻訳先の言語を変更";
+
+"Claude" = "Claude";
+
+"Claude Code failed." = "Claude Code でエラーが発生しました。";
+
+"Claude Code not found. Install it and sign in, or turn Claude off in the menu." = "Claude Code が見つかりません。インストールしてサインインするか、メニューで Claude をオフにしてください。";
+
+"Claude Model" = "Claude のモデル";
+
+"Close (Esc)" = "閉じる (Esc)";
+
+"Close When Clicking Outside" = "外側をクリックしたら閉じる";
+
+"Copy" = "コピー";
+
+"Couldn't detect the language of this text." = "このテキストの言語を判別できませんでした。";
+
+"Current session: %@ used, resets %@" = "現在のセッション：%1$@ 使用済み、%2$@ にリセット";
+
+"Current week: %@ used, resets %@" = "今週：%1$@ 使用済み、%2$@ にリセット";
+
+"Download…" = "ダウンロード…";
+
+"Haiku (lighter)" = "Haiku（軽量）";
+
+"Language detected automatically" = "言語を自動で検出しました";
+
+"Open at Login" = "ログイン時に開く";
+
+"Original" = "原文";
+
+"Quit Emebal" = "Emebal を終了";
+
+"Session %@" = "セッション %@";
+
+"Show Original Text" = "原文を表示";
+
+"Sonnet (most natural)" = "Sonnet（より自然）";
+
+"The language couldn't be detected" = "言語を判別できませんでした";
+
+"Translate Clipboard" = "クリップボードを翻訳";
+
+"Translate Into" = "翻訳先の言語";
+
+"Translating…" = "翻訳中…";
+
+"Unknown language" = "不明な言語";
+
+"Week %@" = "今週 %@";
+
+"Your Claude plan usage, as of the last translation." = "前回の翻訳時点での Claude プランの使用状況";
+
+"resets in %@" = "あと%@でリセット";

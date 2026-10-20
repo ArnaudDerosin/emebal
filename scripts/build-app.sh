@@ -24,6 +24,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c release --show-bin-path)/Emebal" "$APP/Contents/MacOS/Emebal"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/Emebal.icns "$APP/Contents/Resources/Emebal.icns"
+# One folder per language (en.lproj, ja.lproj…): macOS picks the one matching
+# the user's language, so adding a language needs no code change.
+cp -R Resources/Localization/*.lproj "$APP/Contents/Resources/"
 
 # macOS ties the Accessibility permission to the app's signature. An ad-hoc
 # signature changes on every build, so the permission is lost after each
