@@ -46,6 +46,8 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         // would stop the user from resizing it.) The intrinsic size is the
         // view's ideal size, which the panel fits until the user resizes it.
         hosting.sizingOptions = [.minSize, .intrinsicContentSize]
+        // Start the content at the top: the title bar has no buttons or title.
+        hosting.safeAreaRegions = []
 
         let panel = NSPanel(
             contentRect: .zero,
@@ -55,6 +57,11 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         )
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
+        // The header has its own close button (✕, or Esc). The panel stays
+        // titled anyway, for its rounded corners, shadow and resizing.
+        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            panel.standardWindowButton(button)?.isHidden = true
+        }
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false

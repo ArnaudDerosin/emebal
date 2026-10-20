@@ -87,14 +87,29 @@ struct TranslationView: View {
                 .foregroundStyle(.tertiary)
             TargetLanguageMenu(model: model)
             Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
-            .help("Close (Esc)")
+            CloseButton(action: onClose)
         }
+    }
+}
+
+/// A bare ✕ in the top-right corner, brighter on hover.
+struct CloseButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isHovered ? .primary : .secondary)
+                // A larger click target than the cross itself.
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.cancelAction)
+        .onHover { isHovered = $0 }
+        .help("Close (Esc)")
     }
 }
 
