@@ -3,9 +3,10 @@
 **Double-press ⌘C on any text and read it in your language.**
 
 Emebal is a small macOS menu-bar app for instant, natural translations. Select
-text anywhere, press ⌘C twice, and a floating panel shows the translation. The
-source language is detected automatically, and you choose the language you want
-to read in.
+text anywhere, press ⌘C twice, and a floating panel shows two translations side
+by side: Apple's on-device translation, available instantly, and Claude's, more
+natural, a few seconds later. The source language is detected automatically, and
+you choose the language you want to read in.
 
 > **Status:** early development. The menu-bar shell runs; translation is not
 > implemented yet.
@@ -23,16 +24,26 @@ title appear in Mesopotamian records from over 4,000 years ago.
 - **Automatic source-language detection**, done locally with Apple's
   NaturalLanguage framework
 - **Target language of your choice**, remembered between launches
-- **Natural translations** that keep the original tone, while leaving code,
-  identifiers, file paths and URLs untouched, which makes it useful for code
-  reviews and technical discussions
-- **Floating panel** near the cursor, with Copy and Close
+- **Two translations side by side**, each with its own Copy button: Apple
+  (instant, on-device) and Claude (natural, keeps the original tone, and leaves
+  code, identifiers, file paths and URLs untouched, which makes it useful for
+  code reviews and technical discussions)
+- **Turn either one off** in Settings to show only Apple or only Claude
+- **Floating panel** near the cursor
 
-## Translation backends
+## Translation engines
 
-- **Anthropic API** (recommended): add your Anthropic API key in Settings.
-- **Claude Code CLI**: if you have [Claude Code](https://claude.com/claude-code)
-  installed and signed in, Emebal can run it locally to translate. Usage counts
+| | Apple Translation | Claude Code |
+|---|---|---|
+| Speed | Instant | A few seconds |
+| Runs | On your Mac, offline | Through your signed-in Claude Code |
+| Cost | Free | Counts toward your own Claude account |
+| Style | More literal | Natural, keeps tone and code |
+
+- **Apple Translation**: built into macOS, on-device and free. Languages may
+  need to be downloaded once in System Settings.
+- **Claude Code**: if you have [Claude Code](https://claude.com/claude-code)
+  installed and signed in, Emebal runs it locally to translate. Usage counts
   toward your own Claude account.
 
 Emebal is an independent project and is not affiliated with or endorsed by
@@ -40,7 +51,7 @@ Anthropic.
 
 ## Requirements
 
-- macOS 14 or later
+- macOS 15 or later (for Apple Translation)
 - Xcode 16 or later (Swift 6) to build from source
 
 ## Build and run
