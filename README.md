@@ -27,6 +27,10 @@ text anywhere, press **⌘C twice**, and a floating panel shows two translations
 side by side: Apple's on-device translation, available instantly, and Claude's,
 more natural, a few seconds later.
 
+<p align="center">
+  <img src=".github/assets/screenshot.png" alt="Emebal translating a Japanese code-review comment into English: the original text, Apple's translation and Claude's translation side by side" width="800">
+</p>
+
 ## Features
 
 - **Double ⌘C anywhere** to translate the selected text, in any app
