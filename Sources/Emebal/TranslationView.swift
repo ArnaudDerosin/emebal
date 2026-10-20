@@ -42,17 +42,15 @@ struct TranslationView: View {
     }
 
     private var header: some View {
-        HStack {
-            Text("\(model.sourceName) → \(model.target.nativeName)")
-                .font(.headline)
+        HStack(spacing: 6) {
+            Text(model.sourceName)
+                .foregroundStyle(.secondary)
+                .help("Detected language")
+            Image(systemName: "arrow.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+            TargetLanguageMenu(model: model)
             Spacer()
-            Menu(model.target.nativeName) {
-                ForEach(TargetLanguage.all) { language in
-                    Button(language.nativeName) { model.setTarget(language) }
-                }
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
@@ -61,6 +59,51 @@ struct TranslationView: View {
             .keyboardShortcut(.cancelAction)
             .help("Close (Esc)")
         }
+    }
+}
+
+/// The target language, shown as a quiet button that opens the language list.
+private struct TargetLanguageMenu: View {
+    let model: TranslationModel
+    @State private var isHovered = false
+
+    var body: some View {
+        Menu {
+            Picker("Translate Into", selection: Binding(
+                get: { model.target.id },
+                set: { id in
+                    if let language = TargetLanguage.all.first(where: { $0.id == id }) {
+                        model.setTarget(language)
+                    }
+                }
+            )) {
+                ForEach(TargetLanguage.all) { language in
+                    Text(language.nativeName).tag(language.id)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            HStack(spacing: 4) {
+                Text(model.target.nativeName)
+                    .fontWeight(.medium)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
+            )
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .onHover { isHovered = $0 }
+        .help("Change the language to translate into")
     }
 }
 
