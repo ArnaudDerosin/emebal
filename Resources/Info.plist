@@ -2,17 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>Emebal</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
+	<string>Emebal</string>
+	<key>CFBundleExecutable</key>
+	<string>Emebal</string>
+	<key>CFBundleIconFile</key>
 	<string>Emebal</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.arnaudderosin.emebal</string>
-	<key>CFBundleExecutable</key>
-	<string>Emebal</string>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleIconFile</key>
+	<key>CFBundleName</key>
 	<string>Emebal</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
@@ -22,7 +22,6 @@
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
-	<!-- Menu-bar only: no Dock icon, no main window -->
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

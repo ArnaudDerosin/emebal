@@ -6,6 +6,8 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-21
+
 The first release of Emebal: select text anywhere, press ⌘C twice, and read
 it in your language.
 
@@ -29,3 +31,6 @@ it in your language.
 - The interface in English and Japanese, following your Mac's language.
 - `./scripts/build-app.sh --install` builds Emebal and installs it in
   Applications.
+
+[Unreleased]: https://github.com/ArnaudDerosin/emebal/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.1.0
