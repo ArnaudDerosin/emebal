@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ArnaudDerosin/emebal/releases/latest"><img src="https://img.shields.io/github/v/release/ArnaudDerosin/emebal?color=8C4F2B" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-B5713F" alt="MIT License"></a>
@@ -115,6 +116,14 @@ Claude off in the menu.
 
 ### Install
 
+**Download:** get `Emebal-x.y.z.zip` from the
+[latest release](https://github.com/ArnaudDerosin/emebal/releases/latest),
+unzip it and move **Emebal** to Applications. Emebal isn't notarized by Apple
+yet, so the first time, macOS won't open it: go to
+**System Settings → Privacy & Security** and click **Open Anyway**.
+
+**Or build from source:**
+
 ```sh
 git clone https://github.com/ArnaudDerosin/emebal.git
 cd emebal
@@ -181,6 +190,23 @@ EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh --install
 swift test                        # fast tests only
 EMEBAL_LIVE_TESTS=1 swift test    # also runs a real translation through Claude Code
 ```
+
+### Releasing
+
+Changes worth telling users about go under `## [Unreleased]` in
+[CHANGELOG.md](CHANGELOG.md) as you make them. To publish a version:
+
+```sh
+./scripts/release.sh 0.2.0
+```
+
+It checks that `main` is clean and up to date and that the tests pass, sets the
+version, dates the changelog, builds and zips the app, then, after you confirm,
+tags `v0.2.0` and publishes a
+[GitHub Release](https://github.com/ArnaudDerosin/emebal/releases) with the
+changelog notes and the zip. Versions follow
+[Semantic Versioning](https://semver.org/): `0.2.0` for new features, `0.1.1`
+for fixes.
 
 ### Translations
 

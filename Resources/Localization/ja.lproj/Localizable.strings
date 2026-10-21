@@ -70,6 +70,8 @@
 
 "Unknown language" = "不明な言語";
 
+"Version %@" = "バージョン %@";
+
 "Week %@" = "今週 %@";
 
 "Your Claude plan usage, as of the last translation." = "前回の翻訳時点での Claude プランの使用状況";

@@ -107,6 +107,9 @@
 /* TranslationModel.swift */
 "Unknown language" = "Unknown language";
 
+/* EmebalApp.swift */
+"Version %@" = "Version %@";
+
 /* TranslationView.swift */
 "Week %@" = "Week %@";
 

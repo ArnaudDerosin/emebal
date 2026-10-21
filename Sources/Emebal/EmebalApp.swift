@@ -44,6 +44,7 @@ struct EmebalApp: App {
                 }
                 Divider()
             }
+            Text("Version \(AppInfo.version)")
             Button("Quit Emebal") {
                 NSApplication.shared.terminate(nil)
             }

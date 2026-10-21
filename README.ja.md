@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ArnaudDerosin/emebal/releases/latest"><img src="https://img.shields.io/github/v/release/ArnaudDerosin/emebal?color=8C4F2B" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-B5713F" alt="MIT License"></a>
@@ -95,6 +96,10 @@ Apple の翻訳は設定なしで使えます。Claude の翻訳を使うには�
 
 ### インストール
 
+**ダウンロード：** [最新のリリース](https://github.com/ArnaudDerosin/emebal/releases/latest)から `Emebal-x.y.z.zip` をダウンロードして展開し、**Emebal** をアプリケーションフォルダに移動します。Emebal はまだ Apple の公証を受けていないため、初回は macOS が開くのをブロックします。**システム設定 → プライバシーとセキュリティ** で **このまま開く** をクリックしてください。
+
+**ソースからビルドする場合：**
+
 ```sh
 git clone https://github.com/ArnaudDerosin/emebal.git
 cd emebal
@@ -144,6 +149,16 @@ EMEBAL_SIGN_IDENTITY="Emebal Local Signing" ./scripts/build-app.sh --install
 swift test                        # 高速なテストのみ
 EMEBAL_LIVE_TESTS=1 swift test    # Claude Code で実際の翻訳も実行
 ```
+
+### リリース
+
+ユーザーに伝えたい変更は、変更するたびに [CHANGELOG.md](CHANGELOG.md) の `## [Unreleased]` の下に書いておきます。バージョンを公開するには：
+
+```sh
+./scripts/release.sh 0.2.0
+```
+
+`main` に未コミットの変更がなく最新であること、テストが通ることを確認し、バージョンの設定、変更履歴への日付の追加、アプリのビルドと zip 化を行います。確認のあと、`v0.2.0` のタグを付けて、変更履歴の内容と zip を添えた [GitHub リリース](https://github.com/ArnaudDerosin/emebal/releases)を公開します。バージョンは[セマンティック バージョニング](https://semver.org/lang/ja/)に従います（新機能は `0.2.0`、修正は `0.1.1`）。
 
 ### 翻訳（ローカライズ）
 
