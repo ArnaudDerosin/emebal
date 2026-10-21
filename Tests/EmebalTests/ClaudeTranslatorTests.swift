@@ -78,6 +78,39 @@ struct LanguageDetectionTests {
         #expect(LanguageDetection.detect("Je pense que ce changement est correct.")?.languageCode == "fr")
     }
 
+    @Test("Ignores code when detecting the language of a technical message")
+    func ignoresCode() {
+        let japanese = """
+        ありがとうございます。react-native-ble-manager 12.4.5 の Peripheral.disconnect でも、`sendDisconnectionEvent` → callback.invoke() の順になっていることを確認しました。
+        ca79b0f で、`addDisconnectListener` の前に提案どおりのコメントを入れました。あわせて、`BleManager.disconnect` の完了より先にイベントが届く場合 (Android の順番) でも 5 秒待たずに返るテストを足しました。登録を await BleManager.disconnect のあとに動かすと、このテストが落ちることも確かめています。
+        """
+        #expect(LanguageDetection.detect(japanese)?.languageCode == "ja")
+
+        let korean = "`useEffect` 안에서 fetchUserProfile() 을 호출하면 src/hooks/useUser.ts 의 캐시가 무효화됩니다. PR #1234 에서 확인 부탁드립니다."
+        #expect(LanguageDetection.detect(korean)?.languageCode == "ko")
+
+        let chinese = "我在 `UserService.getById()` 里加了缓存，config/cache.yaml 的 ttl_seconds 改成了 300。请帮忙看一下 a1b2c3d 这个提交。"
+        #expect(LanguageDetection.detect(chinese)?.languageCode == "zh")
+
+        let french = "J'ai vérifié que `handleSubmit` appelle bien validateForm() avant setIsLoading(true), voir src/components/LoginForm.tsx et le commit 9f8e7d6."
+        #expect(LanguageDetection.detect(french)?.languageCode == "fr")
+
+        let english = "I checked that `handleSubmit` calls validateForm() before setIsLoading(true); see src/components/LoginForm.tsx and commit 9f8e7d6."
+        #expect(LanguageDetection.detect(english)?.languageCode == "en")
+    }
+
+    @Test("Keeps the words glued to code")
+    func keepsGluedWords() {
+        let text = "BleManager.disconnectの完了を待たずにsendEventを呼ぶと、ca79b0fのテストが落ちます。"
+        let prose = LanguageDetection.withoutCode(text)
+        #expect(prose.contains("の完了を待たずに"))
+        #expect(prose.contains("を呼ぶと、"))
+        #expect(prose.contains("のテストが落ちます。"))
+        #expect(!prose.contains("disconnect"))
+        #expect(!prose.contains("sendEvent"))
+        #expect(LanguageDetection.detect(text)?.languageCode == "ja")
+    }
+
     @Test("Treats regional variants as the same language")
     func sameLanguage() {
         #expect(LanguageDetection.isSame(Locale.Language(identifier: "en-US"), Locale.Language(identifier: "en")))
