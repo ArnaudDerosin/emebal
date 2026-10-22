@@ -25,17 +25,28 @@ struct ClaudeUsage: Equatable, Sendable {
 /// Translates by running the user's own, signed-in Claude Code CLI
 /// (`claude -p`). Usage counts toward the user's Claude account.
 enum ClaudeTranslator {
-    enum Failure: LocalizedError {
+    enum Failure: LocalizedError, Equatable {
         case notInstalled
+        /// Claude Code is installed but has no account to use.
+        case notSignedIn
         case failed(String)
 
         var errorDescription: String? {
             switch self {
             case .notInstalled:
                 String(localized: "Claude Code not found. Install it and sign in, or turn Claude off in the menu.")
+            case .notSignedIn:
+                String(localized: "Claude Code isn't signed in.")
             case .failed(let message):
                 message.isEmpty ? String(localized: "Claude Code failed.") : message
             }
+        }
+
+        /// Claude Code's own messages when it needs a sign-in, e.g. "Invalid
+        /// API key · Please run /login".
+        static func isSignInMessage(_ message: String) -> Bool {
+            let text = message.lowercased()
+            return ["/login", "invalid api key", "not logged in"].contains { text.contains($0) }
         }
     }
 
@@ -78,10 +89,11 @@ enum ClaudeTranslator {
             }
         }
         guard let result, let text = result["result"] as? String else {
-            throw Failure.failed(errors.isEmpty ? output : errors)
+            let message = errors.isEmpty ? output : errors
+            throw Failure.isSignInMessage(message) ? Failure.notSignedIn : Failure.failed(message)
         }
         if result["is_error"] as? Bool == true {
-            throw Failure.failed(text)
+            throw Failure.isSignInMessage(text) ? Failure.notSignedIn : Failure.failed(text)
         }
         return ClaudeTranslation(text: text.trimmingCharacters(in: .whitespacesAndNewlines), usage: usage)
     }

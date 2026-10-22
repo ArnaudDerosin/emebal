@@ -14,6 +14,7 @@ struct TranslationView: View {
             header
             if !model.isAppleEnabled && !model.isClaudeEnabled {
                 Text("Both engines are turned off. Turn one on in the Emebal menu.")
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .top, spacing: 10) {
@@ -67,20 +68,24 @@ struct TranslationView: View {
         .onChange(of: model.isAppleEnabled) { onContentChange() }
         .onChange(of: model.isClaudeEnabled) { onContentChange() }
         .onChange(of: model.isSourceShown) { onContentChange() }
+        .onChange(of: model.textSize) { onContentChange() }
+        .environment(\.textSize, model.textSize)
     }
 
-    /// About 300 points per column, plus the spacing between them.
+    /// About 330 points per column at the medium text size, plus the spacing
+    /// between them.
     private var defaultWidth: CGFloat {
         let engines = [model.isAppleEnabled, model.isClaudeEnabled].filter { $0 }.count
         let columns = engines == 0 ? 1 : engines + (model.isSourceShown ? 1 : 0)
-        return [360, 640, 920][min(columns, 3) - 1]
+        let width: CGFloat = [400, 700, 1000][min(columns, 3) - 1]
+        return (width * model.textSize.widthScale).rounded()
     }
 
     private var header: some View {
         HStack(spacing: 6) {
             Image(nsImage: MenuBarIcon.image)
                 .resizable()
-                .frame(width: 16, height: 16)
+                .frame(width: 17, height: 17)
                 .foregroundStyle(.primary)
                 .padding(.trailing, 4)
                 .accessibilityHidden(true)
@@ -92,6 +97,7 @@ struct TranslationView: View {
             Spacer()
             CloseButton(action: onClose)
         }
+        .font(.system(size: 14))
     }
 }
 
@@ -103,7 +109,7 @@ struct CloseButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(isHovered ? .primary : .secondary)
                 // A larger click target than the cross itself.
                 .frame(width: 20, height: 20)
@@ -128,7 +134,7 @@ struct TargetLanguageMenu: View {
 
     var body: some View {
         Button(action: showMenu) {
-            TargetLanguageLabel(name: model.target.nativeName, isHovered: isHovered)
+            TargetLanguageLabel(name: model.target.displayName, isHovered: isHovered)
         }
         .buttonStyle(.plain)
         .background(MenuAnchorView(anchor: anchor))
@@ -141,7 +147,7 @@ struct TargetLanguageMenu: View {
         guard let view = anchor.view else { return }
         let menu = NSMenu()
         for language in TargetLanguage.all {
-            let item = ClosureMenuItem(title: language.nativeName) {
+            let item = ClosureMenuItem(title: language.displayName) {
                 model.setTarget(language)
             }
             item.state = language.id == model.target.id ? .on : .off
@@ -153,21 +159,21 @@ struct TargetLanguageMenu: View {
     }
 }
 
-/// "日本語 (Detected)": the source language, with a hint that the app
-/// found it on its own.
+/// "Japanese (日本語) · Detected": the source language, with a hint that the
+/// app found it on its own.
 struct SourceLanguageLabel: View {
     let name: String
     let isDetected: Bool
 
     var body: some View {
-        HStack(spacing: 4) {
-            Text(name)
-                .foregroundStyle(.secondary)
+        Group {
             if isDetected {
-                Text("(Detected)")
-                    .foregroundStyle(.secondary)
+                Text("\(name) · Detected")
+            } else {
+                Text(verbatim: name)
             }
         }
+        .foregroundStyle(.secondary)
         .help(isDetected ? "Language detected automatically" : "The language couldn't be detected")
     }
 }
@@ -247,16 +253,23 @@ private struct EngineColumn<Footnote: View>: View {
     /// A small line next to the Copy button.
     @ViewBuilder var footnote: () -> Footnote
 
+    /// The texts are larger than the interface around them so they are
+    /// comfortable to read, and the same size in every column, so lines can be
+    /// compared side by side.
+    @Environment(\.textSize) private var textSize
+    private var textFont: Font { .system(size: textSize.textPointSize) }
+    private var messageFont: Font { .system(size: textSize.messagePointSize) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.caption)
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
             ScrollView {
                 content
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 320)
+            .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 360)
             HStack {
                 footnote()
                 Spacer()
@@ -268,9 +281,9 @@ private struct EngineColumn<Footnote: View>: View {
                 .disabled(!isDone)
             }
         }
-        .padding(10)
+        .padding(14)
         .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
     @ViewBuilder
@@ -279,24 +292,32 @@ private struct EngineColumn<Footnote: View>: View {
         case .loading:
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
-                Text("Translating…").foregroundStyle(.secondary)
+                Text("Translating…")
+                    .font(messageFont)
+                    .foregroundStyle(.secondary)
             }
         case .done(let text):
             Text(text)
+                .font(textFont)
+                .lineSpacing(textSize.lineSpacing)
                 .foregroundStyle(isMuted ? .secondary : .primary)
                 .textSelection(.enabled)
         case .failed(let message):
             Text(message)
+                .font(messageFont)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         case .needsDownload(let message):
             VStack(alignment: .leading, spacing: 8) {
                 Text(message)
+                    .font(messageFont)
                     .foregroundStyle(.secondary)
                 if let onDownload {
                     Button("Download…", action: onDownload)
                 }
             }
+        case .needsClaudeSetup(let setup):
+            ClaudeSetupView(setup: setup, font: messageFont)
         }
     }
 
@@ -377,4 +398,42 @@ private struct ClaudeUsageLabel: View {
         formatter.allowedUnits = minutes >= 60 ? [.hour, .minute] : [.minute]
         return formatter.string(from: TimeInterval(minutes * 60)) ?? "\(minutes)m"
     }
+}
+
+/// What to do when Claude Code is missing or signed out, with a button for
+/// the first step. Signing in happens in Claude Code itself, in Terminal:
+/// Emebal never handles the account.
+private struct ClaudeSetupView: View {
+    let setup: ClaudeSetup
+    let font: Font
+
+    static let setupPage = URL(string: "https://code.claude.com/docs/en/setup")!
+    static let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            switch setup {
+            case .install:
+                Text("Claude Code isn't installed. Emebal uses it for Claude translations: install it, sign in once, then translate again.")
+                    .font(font)
+                    .foregroundStyle(.secondary)
+                Button("Install Claude Code…") {
+                    NSWorkspace.shared.open(Self.setupPage)
+                }
+            case .signIn:
+                Text("Claude Code isn't signed in. In Terminal, run `claude` and sign in, then translate again.")
+                    .font(font)
+                    .foregroundStyle(.secondary)
+                Button("Open Terminal") {
+                    NSWorkspace.shared.open(Self.terminal)
+                }
+            }
+        }
+        .textSelection(.enabled)
+    }
+}
+
+extension EnvironmentValues {
+    /// The text size chosen in the menu, for the panel's columns.
+    @Entry var textSize: TextSize = .medium
 }

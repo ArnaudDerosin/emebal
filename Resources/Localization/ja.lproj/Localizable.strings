@@ -4,7 +4,10 @@
 /* Separates the parts of the Claude usage line. */
 " · " = "・";
 
-"(Detected)" = "（自動検出）";
+"%@ · Detected" = "%@・自動検出";
+
+/* A language's name in the app's language, then its own name. */
+"%@ (%@)" = "%1$@ (%2$@)";
 
 "Allow Accessibility to Use ⌘C ⌘C…" = "⌘C ⌘C を使うためにアクセシビリティを許可…";
 
@@ -56,7 +59,8 @@
 
 "Session %@" = "セッション %@";
 
-"Show Original Text" = "原文を表示";
+/* Section title in the menu-bar panel: which columns the translation panel shows. */
+"Columns" = "表示する列";
 
 "Sonnet (most natural)" = "Sonnet（より自然）";
 
@@ -77,3 +81,27 @@
 "Your Claude plan usage, as of the last translation." = "前回の翻訳時点での Claude プランの使用状況";
 
 "resets in %@" = "あと%@でリセット";
+
+"Text Size" = "文字サイズ";
+
+"Small" = "小";
+
+"Medium" = "中";
+
+"Large" = "大";
+
+/* Section title in the menu-bar panel. */
+"Translation" = "翻訳";
+
+/* Section title in the menu-bar panel: settings of the translation panel. */
+"Panel" = "パネル";
+
+"Claude Code isn't signed in." = "Claude Code にサインインしていません。";
+
+"Claude Code isn't installed. Emebal uses it for Claude translations: install it, sign in once, then translate again." = "Claude Code がインストールされていません。Emebal は Claude の翻訳に Claude Code を使います。インストールして一度サインインしてから、もう一度翻訳してください。";
+
+"Install Claude Code…" = "Claude Code をインストール…";
+
+"Claude Code isn't signed in. In Terminal, run `claude` and sign in, then translate again." = "Claude Code にサインインしていません。ターミナルで `claude` を実行してサインインしてから、もう一度翻訳してください。";
+
+"Open Terminal" = "ターミナルを開く";

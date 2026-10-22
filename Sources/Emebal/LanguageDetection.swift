@@ -53,10 +53,41 @@ enum LanguageDetection {
 
     /// The language's own name, e.g. "日本語" for Japanese.
     static func nativeName(of language: Locale.Language) -> String {
-        let id = language.maximalIdentifier
+        let id = identifier(of: language)
         let locale = Locale(identifier: id)
-        return locale.localizedString(forLanguageCode: language.languageCode?.identifier ?? id)?
-            .capitalized(with: locale) ?? id
+        return locale.localizedString(forIdentifier: id).map { capitalizingFirstLetter($0, in: locale) } ?? id
+    }
+
+    /// How a language is shown in the interface: its name in the app's
+    /// language, then its own name, e.g. "Japanese (日本語)" in English and
+    /// "フランス語 (Français)" in Japanese. Just one name when both are the
+    /// same, e.g. "English" in English.
+    static func displayName(of language: Locale.Language, in appLocale: Locale = appLocale) -> String {
+        let id = identifier(of: language)
+        let inApp = appLocale.localizedString(forIdentifier: id)
+            .map { capitalizingFirstLetter($0, in: appLocale) } ?? nativeName(of: language)
+        let native = nativeName(of: language)
+        if inApp.caseInsensitiveCompare(native) == .orderedSame {
+            return inApp
+        }
+        return String(localized: "\(inApp) (\(native))", comment: "A language's name in the app's language, then its own name.")
+    }
+
+    /// "ja", "en", "zh-Hans": the language code, plus the script when it
+    /// matters for the name. `Locale.Language` always fills in a script
+    /// (Latin for English), so it's kept only when it isn't the language's
+    /// usual one, or for Chinese, where Simplified and Traditional are both
+    /// common and must be told apart.
+    private static func identifier(of language: Locale.Language) -> String {
+        guard let code = language.languageCode?.identifier else { return language.minimalIdentifier }
+        guard let script = language.script else { return code }
+        let usualScript = Locale.Language(identifier: code).script
+        return script != usualScript || code == "zh" ? "\(code)-\(script.identifier)" : code
+    }
+
+    /// "japonais" → "Japonais": names start a menu item or a label.
+    private static func capitalizingFirstLetter(_ name: String, in locale: Locale) -> String {
+        name.prefix(1).uppercased(with: locale) + name.dropFirst()
     }
 
     /// The language's name in the app's own language, e.g. "英語" for English

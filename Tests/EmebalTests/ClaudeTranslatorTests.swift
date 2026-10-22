@@ -37,6 +37,20 @@ struct ClaudeTranslatorTests {
         #expect(translation.usage == nil)
     }
 
+    @Test("Recognizes when Claude Code needs a sign-in")
+    func notSignedIn() {
+        let output = """
+        {"type":"result","subtype":"success","is_error":true,"result":"Invalid API key · Please run /login"}
+        """
+        #expect(throws: ClaudeTranslator.Failure.notSignedIn) {
+            try ClaudeTranslator.parse(output)
+        }
+        #expect(throws: ClaudeTranslator.Failure.notSignedIn) {
+            try ClaudeTranslator.parse("", errors: "Not logged in · Please run /login")
+        }
+        #expect(!ClaudeTranslator.Failure.isSignInMessage("There's an issue with the selected model."))
+    }
+
     @Test("Reports Claude Code's error message")
     func parsesError() {
         let output = """
@@ -111,9 +125,27 @@ struct LanguageDetectionTests {
         #expect(LanguageDetection.detect(text)?.languageCode == "ja")
     }
 
+    @Test("Names languages in the app's language, then in their own")
+    func displayNames() {
+        let english = Locale(identifier: "en")
+        #expect(LanguageDetection.displayName(of: .init(identifier: "ja"), in: english) == "Japanese (日本語)")
+        #expect(LanguageDetection.displayName(of: .init(identifier: "fr"), in: english) == "French (Français)")
+        #expect(LanguageDetection.displayName(of: .init(identifier: "en"), in: english) == "English")
+
+        let japanese = Locale(identifier: "ja")
+        #expect(LanguageDetection.displayName(of: .init(identifier: "en"), in: japanese) == "英語 (English)")
+        #expect(LanguageDetection.displayName(of: .init(identifier: "ja"), in: japanese) == "日本語")
+
+        // Simplified Chinese keeps its script in both names.
+        let chinese = LanguageDetection.displayName(of: .init(identifier: "zh-Hans"), in: english)
+        print("zh-Hans in English:", chinese)
+        #expect(chinese.contains("Simplified"))
+    }
+
     @Test("Treats regional variants as the same language")
     func sameLanguage() {
         #expect(LanguageDetection.isSame(Locale.Language(identifier: "en-US"), Locale.Language(identifier: "en")))
         #expect(!LanguageDetection.isSame(Locale.Language(identifier: "ja"), Locale.Language(identifier: "en")))
     }
 }
+

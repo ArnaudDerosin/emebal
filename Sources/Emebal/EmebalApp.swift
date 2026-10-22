@@ -9,49 +9,13 @@ struct EmebalApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Button("Translate Clipboard") {
+            MenuPanel(settings: settings, loginItem: loginItem) {
                 appDelegate.translateClipboard()
             }
-            Divider()
-
-            Picker("Translate Into", selection: $settings.targetLanguageID) {
-                ForEach(TargetLanguage.all) { language in
-                    Text(language.nativeName).tag(language.id)
-                }
-            }
-            Toggle("Show Original Text", isOn: $settings.isSourceShown)
-            Toggle("Apple Translation", isOn: $settings.isAppleEnabled)
-            Toggle("Claude", isOn: $settings.isClaudeEnabled)
-            Picker("Claude Model", selection: $settings.claudeModel) {
-                ForEach(ClaudeModel.allCases) { model in
-                    Text(model.displayName).tag(model)
-                }
-            }
-            .disabled(!settings.isClaudeEnabled)
-            Divider()
-
-            Toggle("Close When Clicking Outside", isOn: $settings.closesOnClickOutside)
-            Toggle("Open at Login", isOn: Binding(
-                get: { loginItem.isEnabled },
-                set: { loginItem.setEnabled($0) }
-            ))
-            .onAppear { loginItem.refresh() }
-            Divider()
-
-            if !DoubleCopyMonitor.isTrusted {
-                Button("Allow Accessibility to Use ⌘C ⌘C…") {
-                    DoubleCopyMonitor.requestPermission()
-                }
-                Divider()
-            }
-            Text("Version \(AppInfo.version)")
-            Button("Quit Emebal") {
-                NSApplication.shared.terminate(nil)
-            }
-            .keyboardShortcut("q")
         } label: {
             Image(nsImage: MenuBarIcon.image)
         }
+        .menuBarExtraStyle(.window)
     }
 }
 

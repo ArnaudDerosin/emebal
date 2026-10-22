@@ -6,9 +6,9 @@ struct TargetLanguage: Identifiable, Hashable, Sendable {
     /// BCP 47 identifier, e.g. "en", "fr", "zh-Hans".
     let id: String
 
-    /// The language's own name ("Français", "日本語"), shown in menus.
-    var nativeName: String {
-        Locale(identifier: id).localizedString(forIdentifier: id)?.capitalized(with: Locale(identifier: id)) ?? id
+    /// "French (Français)", shown in menus: see `LanguageDetection.displayName`.
+    var displayName: String {
+        LanguageDetection.displayName(of: localeLanguage)
     }
 
     /// The English name ("French", "Japanese"), used in the Claude prompt.
@@ -36,6 +36,59 @@ enum ClaudeModel: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .sonnet: String(localized: "Sonnet (most natural)")
         case .haiku: String(localized: "Haiku (lighter)")
+        }
+    }
+}
+
+/// The size of the texts in the panel, chosen in the menu.
+enum TextSize: String, CaseIterable, Identifiable, Sendable {
+    case small
+    case medium
+    case large
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .small: String(localized: "Small")
+        case .medium: String(localized: "Medium")
+        case .large: String(localized: "Large")
+        }
+    }
+
+    /// The original text and the translations.
+    var textPointSize: CGFloat {
+        switch self {
+        case .small: 14
+        case .medium: 16
+        case .large: 19
+        }
+    }
+
+    /// Status and error messages, a little smaller than the texts.
+    var messagePointSize: CGFloat {
+        switch self {
+        case .small: 13
+        case .medium: 14
+        case .large: 16
+        }
+    }
+
+    var lineSpacing: CGFloat {
+        switch self {
+        case .small: 3
+        case .medium: 4
+        case .large: 5
+        }
+    }
+
+    /// The panel's default width grows with the text, so lines don't wrap
+    /// into narrow columns.
+    var widthScale: CGFloat {
+        switch self {
+        case .small: 0.9
+        case .medium: 1
+        case .large: 1.15
         }
     }
 }
@@ -71,6 +124,10 @@ final class AppSettings {
         didSet { defaults.set(closesOnClickOutside, forKey: Keys.closesOnClickOutside) }
     }
 
+    var textSize: TextSize {
+        didSet { defaults.set(textSize.rawValue, forKey: Keys.textSize) }
+    }
+
     var claudeModel: ClaudeModel {
         didSet { defaults.set(claudeModel.rawValue, forKey: Keys.claudeModel) }
     }
@@ -85,6 +142,7 @@ final class AppSettings {
         isClaudeEnabled = defaults.object(forKey: Keys.claudeEnabled) as? Bool ?? true
         isSourceShown = defaults.object(forKey: Keys.sourceShown) as? Bool ?? true
         closesOnClickOutside = defaults.object(forKey: Keys.closesOnClickOutside) as? Bool ?? true
+        textSize = defaults.string(forKey: Keys.textSize).flatMap(TextSize.init(rawValue:)) ?? .medium
         claudeModel = defaults.string(forKey: Keys.claudeModel).flatMap(ClaudeModel.init(rawValue:)) ?? .sonnet
     }
 
@@ -94,6 +152,7 @@ final class AppSettings {
         static let claudeEnabled = "claudeEnabled"
         static let sourceShown = "sourceShown"
         static let closesOnClickOutside = "closesOnClickOutside"
+        static let textSize = "textSize"
         static let claudeModel = "claudeModel"
     }
 }
