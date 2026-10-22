@@ -12,7 +12,7 @@
 "%@ · Detected" = "%@ · Detected";
 
 /* MenuPanel.swift */
-"Allow Accessibility to Use ⌘C ⌘C…" = "Allow Accessibility to Use ⌘C ⌘C…";
+"Allow Accessibility to Use ⌘C C…" = "Allow Accessibility to Use ⌘C C…";
 
 /* TranslationModel.swift */
 "Apple can't translate %@ to %@." = "Apple can't translate %@ to %@.";

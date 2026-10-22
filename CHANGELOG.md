@@ -15,8 +15,8 @@ All notable changes to Emebal are listed here. The format follows
 ### Changed
 
 - Larger, easier-to-read text in the translation panel (the new Medium size).
-- Languages are named in Emebal's language, followed by their own name: for
-  example "Japanese (日本語)" when Emebal is in English.
+- The shortcut is described as ⌘C C (hold ⌘ and press C twice), which is how
+  it's used.
 - The menu-bar menu stays open while you change settings, like the Wi-Fi and
   Sound menus, and groups them under Translation, Columns and Panel.
 - The Claude plan usage now sits next to the Claude title instead of next to
@@ -24,15 +24,30 @@ All notable changes to Emebal are listed here. The format follows
   the past 5 minutes, or a placeholder until numbers arrive), updates before the
   translation is done with a smooth animation, and hides numbers from a window
   that has already reset.
+- Languages are named in Emebal's language, followed by their own name: for
+  example "Japanese (日本語)" when Emebal is in English.
+
+### Fixed
+
+- Apple's translation could stay on "Translating…" after changing the target
+  language, especially when going back to a language used before.
+- Picking the language that's already selected no longer translates the text
+  again.
+- The panel stays on screen when a long translation makes it grow: it no longer
+  slides under the Dock or past the edges. With a single column it's also wider,
+  so long translations don't make it as tall.
+- Changing the language from the menu bar now translates the open panel's text
+  again, as changing it from the panel does.
 
 ## [0.1.0] - 2026-10-21
 
-The first release of Emebal: select text anywhere, press ⌘C twice, and read
-it in your language.
+The first release of Emebal: select text anywhere, hold ⌘ and press C twice
+(⌘C C), and read it in your language.
 
 ### Added
 
-- Double ⌘C in any app opens a floating panel with the translation.
+- ⌘C C (hold ⌘, press C twice) in any app opens a floating panel with the
+  translation.
 - Apple's on-device translation and Claude's translation, side by side, each
   with a Copy button. Either can be turned off.
 - Claude translations run through your own Claude Code: no credentials in

@@ -55,13 +55,17 @@ struct TranslationView: View {
         )
         .translationTask(model.appleConfiguration) { session in
             // The session must stay in this closure; only the result is passed on.
+            let request = model.appleRequest
             let state: TranslationState
             do {
                 state = .done(try await session.translate(model.text).targetText)
+            } catch is CancellationError {
+                return  // A newer request replaced this one.
             } catch {
+                guard !Task.isCancelled else { return }
                 state = .failed(error.localizedDescription)
             }
-            model.setAppleState(state)
+            model.setAppleState(state, for: request)
         }
         .onChange(of: model.appleState) { onContentChange() }
         .onChange(of: model.claudeState) { onContentChange() }
@@ -70,15 +74,18 @@ struct TranslationView: View {
         .onChange(of: model.isClaudeEnabled) { onContentChange() }
         .onChange(of: model.isSourceShown) { onContentChange() }
         .onChange(of: model.textSize) { onContentChange() }
+        // From the panel's language menu or the menu bar: translate again,
+        // only when the language really changed.
+        .onChange(of: model.target) { model.start() }
         .environment(\.textSize, model.textSize)
     }
 
-    /// About 330 points per column at the medium text size, plus the spacing
-    /// between them.
+    /// At the medium text size. A single column is wider than a third of three:
+    /// narrow, a long translation would make the panel very tall.
     private var defaultWidth: CGFloat {
         let engines = [model.isAppleEnabled, model.isClaudeEnabled].filter { $0 }.count
         let columns = engines == 0 ? 1 : engines + (model.isSourceShown ? 1 : 0)
-        let width: CGFloat = [400, 700, 1000][min(columns, 3) - 1]
+        let width: CGFloat = [520, 760, 1000][min(columns, 3) - 1]
         return (width * model.textSize.widthScale).rounded()
     }
 

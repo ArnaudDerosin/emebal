@@ -9,7 +9,7 @@
 /* A language's name in the app's language, then its own name. */
 "%@ (%@)" = "%1$@ (%2$@)";
 
-"Allow Accessibility to Use ⌘C ⌘C…" = "⌘C ⌘C を使うためにアクセシビリティを許可…";
+"Allow Accessibility to Use ⌘C C…" = "⌘C C を使うためにアクセシビリティを許可…";
 
 "Apple can't translate %@ to %@." = "Apple の翻訳では、%1$@から%2$@には翻訳できません。";
 

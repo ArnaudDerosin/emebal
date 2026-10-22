@@ -1,7 +1,7 @@
 # Emebal
 
-macOS menu-bar translator (SwiftUI, Swift 6, SwiftPM, macOS 15+). Double ⌘C
-shows Apple's on-device translation and Claude's (through the user's own
+macOS menu-bar translator (SwiftUI, Swift 6, SwiftPM, macOS 15+). ⌘C C (hold
+⌘, press C twice) shows Apple's on-device translation and Claude's (through the user's own
 `claude -p`) side by side.
 
 ## Changelog and releases
@@ -37,7 +37,7 @@ shows Apple's on-device translation and Claude's (through the user's own
 - `swift test` must pass. `./scripts/build-app.sh --install` builds and moves
   the app to /Applications (the only copy, so macOS shows the right icon).
 - Each build has a new ad-hoc signature, which silently breaks the
-  Accessibility permission (double ⌘C). To install for testing without several
+  Accessibility permission (the ⌘C C shortcut). To install for testing without several
   prompts: quit Emebal, then
   `tccutil reset Accessibility io.github.arnaudderosin.emebal`, then install
   once.
