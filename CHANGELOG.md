@@ -6,6 +6,20 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Text Size in the menu: Small, Medium or Large text in the translation panel.
+- When Claude Code isn't installed or isn't signed in, the Claude column says
+  so, with an Install Claude Code… or Open Terminal button.
+
+### Changed
+
+- Larger, easier-to-read text in the translation panel (the new Medium size).
+- Languages are named in Emebal's language, followed by their own name: for
+  example "Japanese (日本語)" when Emebal is in English.
+- The menu-bar menu stays open while you change settings, like the Wi-Fi and
+  Sound menus, and groups them under Translation, Columns and Panel.
+
 ## [0.1.0] - 2026-10-21
 
 The first release of Emebal: select text anywhere, press ⌘C twice, and read

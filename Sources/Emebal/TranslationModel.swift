@@ -9,6 +9,13 @@ enum TranslationState: Equatable {
     case failed(String)
     /// Apple supports the pair, but the languages aren't downloaded yet.
     case needsDownload(String)
+    /// Claude Code must be installed or signed in first.
+    case needsClaudeSetup(ClaudeSetup)
+}
+
+enum ClaudeSetup: Equatable {
+    case install
+    case signIn
 }
 
 /// One translation request: the copied text and the result of each engine.
@@ -38,9 +45,10 @@ final class TranslationModel {
     var isAppleEnabled: Bool { settings.isAppleEnabled }
     var isClaudeEnabled: Bool { settings.isClaudeEnabled }
     var isSourceShown: Bool { settings.isSourceShown }
+    var textSize: TextSize { settings.textSize }
 
     var sourceName: String {
-        sourceLanguage.map(LanguageDetection.nativeName(of:)) ?? String(localized: "Unknown language")
+        sourceLanguage.map { LanguageDetection.displayName(of: $0) } ?? String(localized: "Unknown language")
     }
 
     func setTarget(_ language: TargetLanguage) {
@@ -124,7 +132,11 @@ final class TranslationModel {
                 return
             } catch {
                 guard !Task.isCancelled else { return }
-                claudeState = .failed(error.localizedDescription)
+                switch error as? ClaudeTranslator.Failure {
+                case .notInstalled: claudeState = .needsClaudeSetup(.install)
+                case .notSignedIn: claudeState = .needsClaudeSetup(.signIn)
+                default: claudeState = .failed(error.localizedDescription)
+                }
             }
         }
     }

@@ -5,10 +5,13 @@
 /* TranslationView.swift: Separates the parts of the Claude usage line. */
 " · " = " · ";
 
-/* TranslationView.swift */
-"(Detected)" = "(Detected)";
+/* LanguageDetection.swift: A language's name in the app's language, then its own name. */
+"%@ (%@)" = "%@ (%@)";
 
-/* EmebalApp.swift */
+/* TranslationView.swift */
+"%@ · Detected" = "%@ · Detected";
+
+/* MenuPanel.swift */
 "Allow Accessibility to Use ⌘C ⌘C…" = "Allow Accessibility to Use ⌘C ⌘C…";
 
 /* TranslationModel.swift */
@@ -17,7 +20,7 @@
 /* TranslationModel.swift */
 "Apple needs to download %@ → %@ once to translate on this Mac." = "Apple needs to download %@ → %@ once to translate on this Mac.";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Apple Translation" = "Apple Translation";
 
 /* TranslationModel.swift */
@@ -32,23 +35,35 @@
 /* TranslationView.swift */
 "Change the language to translate into" = "Change the language to translate into";
 
-/* EmebalApp.swift, TranslationView.swift */
+/* MenuPanel.swift, TranslationView.swift */
 "Claude" = "Claude";
 
 /* ClaudeTranslator.swift */
 "Claude Code failed." = "Claude Code failed.";
 
+/* TranslationView.swift */
+"Claude Code isn't installed. Emebal uses it for Claude translations: install it, sign in once, then translate again." = "Claude Code isn't installed. Emebal uses it for Claude translations: install it, sign in once, then translate again.";
+
+/* ClaudeTranslator.swift */
+"Claude Code isn't signed in." = "Claude Code isn't signed in.";
+
+/* TranslationView.swift */
+"Claude Code isn't signed in. In Terminal, run `claude` and sign in, then translate again." = "Claude Code isn't signed in. In Terminal, run `claude` and sign in, then translate again.";
+
 /* ClaudeTranslator.swift */
 "Claude Code not found. Install it and sign in, or turn Claude off in the menu." = "Claude Code not found. Install it and sign in, or turn Claude off in the menu.";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Claude Model" = "Claude Model";
 
 /* TranslationView.swift */
 "Close (Esc)" = "Close (Esc)";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Close When Clicking Outside" = "Close When Clicking Outside";
+
+/* MenuPanel.swift */
+"Columns" = "Columns";
 
 /* TranslationView.swift */
 "Copy" = "Copy";
@@ -69,15 +84,30 @@
 "Haiku (lighter)" = "Haiku (lighter)";
 
 /* TranslationView.swift */
+"Install Claude Code…" = "Install Claude Code…";
+
+/* TranslationView.swift */
 "Language detected automatically" = "Language detected automatically";
 
-/* EmebalApp.swift */
+/* AppSettings.swift */
+"Large" = "Large";
+
+/* AppSettings.swift */
+"Medium" = "Medium";
+
+/* MenuPanel.swift */
 "Open at Login" = "Open at Login";
 
 /* TranslationView.swift */
+"Open Terminal" = "Open Terminal";
+
+/* MenuPanel.swift, TranslationView.swift */
 "Original" = "Original";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
+"Panel" = "Panel";
+
+/* MenuPanel.swift */
 "Quit Emebal" = "Quit Emebal";
 
 /* TranslationView.swift */
@@ -86,28 +116,34 @@
 /* TranslationView.swift */
 "Session %@" = "Session %@";
 
-/* EmebalApp.swift */
-"Show Original Text" = "Show Original Text";
+/* AppSettings.swift */
+"Small" = "Small";
 
 /* AppSettings.swift */
 "Sonnet (most natural)" = "Sonnet (most natural)";
 
+/* MenuPanel.swift */
+"Text Size" = "Text Size";
+
 /* TranslationView.swift */
 "The language couldn't be detected" = "The language couldn't be detected";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Translate Clipboard" = "Translate Clipboard";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Translate Into" = "Translate Into";
 
 /* TranslationView.swift */
 "Translating…" = "Translating…";
 
+/* MenuPanel.swift */
+"Translation" = "Translation";
+
 /* TranslationModel.swift */
 "Unknown language" = "Unknown language";
 
-/* EmebalApp.swift */
+/* MenuPanel.swift */
 "Version %@" = "Version %@";
 
 /* TranslationView.swift */
