@@ -31,9 +31,10 @@ struct TranslationView: View {
                     }
                     if model.isClaudeEnabled {
                         EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized) {
-                            if let usage = model.claudeUsage {
-                                ClaudeUsageLabel(usage: usage)
-                            }
+                            ClaudeUsageLabel(
+                                usage: model.claudeUsage,
+                                isUnavailable: model.isClaudeUsageUnavailable
+                            )
                         }
                     }
                 }
@@ -241,7 +242,7 @@ private final class ClosureMenuItem: NSMenuItem {
     }
 }
 
-private struct EngineColumn<Footnote: View>: View {
+private struct EngineColumn<TitleAccessory: View>: View {
     let title: LocalizedStringKey
     let state: TranslationState
     /// Shows the text in the same gray as the source language, for the
@@ -250,8 +251,9 @@ private struct EngineColumn<Footnote: View>: View {
     /// Fill the panel's height instead of growing with the text up to a limit.
     var fillsHeight = false
     var onDownload: (() -> Void)? = nil
-    /// A small line next to the Copy button.
-    @ViewBuilder var footnote: () -> Footnote
+    /// Shown at the right of the title, e.g. the Claude plan usage: it
+    /// describes the engine, so it sits next to its name.
+    @ViewBuilder var titleAccessory: () -> TitleAccessory
 
     /// The texts are larger than the interface around them so they are
     /// comfortable to read, and the same size in every column, so lines can be
@@ -262,16 +264,19 @@ private struct EngineColumn<Footnote: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                titleAccessory()
+            }
             ScrollView {
                 content
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 360)
             HStack {
-                footnote()
                 Spacer()
                 Button("Copy") {
                     guard case .done(let text) = state else { return }
@@ -327,7 +332,7 @@ private struct EngineColumn<Footnote: View>: View {
     }
 }
 
-extension EngineColumn where Footnote == EmptyView {
+extension EngineColumn where TitleAccessory == EmptyView {
     init(
         title: LocalizedStringKey,
         state: TranslationState,
@@ -341,28 +346,95 @@ extension EngineColumn where Footnote == EmptyView {
     }
 }
 
-/// "Session 6% · resets in 2h 35m · Week 8%": the Claude plan usage, kept
-/// up to date as time passes. The tooltip gives both reset times.
+/// "Session 6% · resets in 2h 35m · Week 8%": the Claude plan usage, next to
+/// the Claude title, kept up to date as time passes. The tooltip gives both
+/// reset times.
+///
+/// Until numbers are known, gray placeholder bars hold their place, so the
+/// line doesn't pop in; the numbers then fade in and roll to their values.
 private struct ClaudeUsageLabel: View {
-    let usage: ClaudeUsage
+    let usage: ClaudeUsage?
+    /// No usage will come for this translation: show nothing rather than a
+    /// placeholder that never fills in.
+    let isUnavailable: Bool
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            Text(summary(now: context.date))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .help(details)
+            // Numbers from a window that has already reset are stale.
+            if let usage = usage?.current(at: context.date) {
+                ClaudeUsageText(usage: usage, now: context.date)
+            } else if !isUnavailable {
+                ClaudeUsageText(usage: .placeholder(at: context.date), now: context.date, isPlaceholder: true)
+            }
         }
+        .animation(.easeInOut(duration: 0.35), value: usage)
+        .animation(.easeInOut(duration: 0.35), value: isUnavailable)
+    }
+}
+
+private extension ClaudeUsage {
+    /// Typical values, only to give the placeholder bars a realistic length.
+    static func placeholder(at date: Date) -> ClaudeUsage {
+        ClaudeUsage(
+            session: .init(usedFraction: 0.07, resetsAt: date.addingTimeInterval(2 * 3600 + 35 * 60)),
+            week: .init(usedFraction: 0.08, resetsAt: date.addingTimeInterval(3 * 86400))
+        )
+    }
+}
+
+/// The usage line itself, for windows that haven't reset yet.
+private struct ClaudeUsageText: View {
+    let usage: ClaudeUsage
+    let now: Date
+    var isPlaceholder = false
+
+    /// The height of capital letters in the caption font used here.
+    private static let captionCapHeight = NSFont.preferredFont(forTextStyle: .caption1).capHeight
+
+    var body: some View {
+        // Aligned on the text's baseline, like the Claude title next to it,
+        // with the icon centered on the capital letters: a round symbol on the
+        // baseline itself dips below the text and looks low at this size.
+        let capHeight = Self.captionCapHeight
+        return HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: "gauge.with.dots.needle.33percent")
+                .alignmentGuide(.firstTextBaseline) { icon in
+                    // + 0.5: the symbol's frame has a little more room below
+                    // its drawing than above.
+                    icon.height / 2 + capHeight / 2 + 0.5
+                }
+            Text(summary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                // Digits roll to their new values when the numbers change.
+                .contentTransition(.numericText())
+                // Until numbers arrive: a rounded pill as wide as the text,
+                // breathing gently, in place of the text.
+                .opacity(isPlaceholder ? 0 : 1)
+                .background {
+                    if isPlaceholder {
+                        Capsule()
+                            .fill(.quaternary)
+                            .padding(.vertical, 2)
+                            .phaseAnimator([1, 0.45]) { pill, opacity in
+                                pill.opacity(opacity)
+                            } animation: { _ in
+                                .easeInOut(duration: 0.9)
+                            }
+                            .transition(.opacity)
+                    }
+                }
+        }
+        .font(.caption)
+        .foregroundStyle(.tertiary)
+        .help(isPlaceholder ? "" : details)
     }
 
-    private func summary(now: Date) -> String {
+    private var summary: String {
         var parts: [String] = []
         if let session = usage.session {
             parts.append(String(localized: "Session \(percent(session))"))
-            if session.resetsAt > now {
-                parts.append(String(localized: "resets in \(timeLeft(until: session.resetsAt, from: now))"))
-            }
+            parts.append(String(localized: "resets in \(timeLeft(until: session.resetsAt, from: now))"))
         }
         if let week = usage.week {
             parts.append(String(localized: "Week \(percent(week))"))

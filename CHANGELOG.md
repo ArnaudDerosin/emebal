@@ -19,6 +19,11 @@ All notable changes to Emebal are listed here. The format follows
   example "Japanese (日本語)" when Emebal is in English.
 - The menu-bar menu stays open while you change settings, like the Wi-Fi and
   Sound menus, and groups them under Translation, Columns and Panel.
+- The Claude plan usage now sits next to the Claude title instead of next to
+  the Copy button. It shows right away when the panel opens (the usage from
+  the past 5 minutes, or a placeholder until numbers arrive), updates before the
+  translation is done with a smooth animation, and hides numbers from a window
+  that has already reset.
 
 ## [0.1.0] - 2026-10-21
 

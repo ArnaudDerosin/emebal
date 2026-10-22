@@ -66,6 +66,49 @@ struct ClaudeTranslatorTests {
         }
     }
 
+    @Test("Reads the usage from a single line, as it streams in")
+    func usageFromLine() {
+        let line = #"{"type":"rate_limit_event","rate_limit_info":{"unifiedWindows":{"five_hour":{"utilization":0.07,"resetsAt":1792516200}}}}"#
+        #expect(ClaudeTranslator.usage(fromLine: line)?.session?.usedFraction == 0.07)
+        #expect(ClaudeTranslator.usage(fromLine: #"{"type":"assistant"}"#) == nil)
+        #expect(ClaudeTranslator.usage(fromLine: "not json") == nil)
+    }
+
+    @Test("Leaves out the windows that have already reset")
+    func currentUsage() {
+        let now = Date()
+        let usage = ClaudeUsage(
+            session: .init(usedFraction: 0.5, resetsAt: now.addingTimeInterval(-60)),
+            week: .init(usedFraction: 0.1, resetsAt: now.addingTimeInterval(3600))
+        )
+        #expect(usage.current(at: now)?.session == nil)
+        #expect(usage.current(at: now)?.week?.usedFraction == 0.1)
+        #expect(usage.current(at: now.addingTimeInterval(7200)) == nil)
+    }
+
+    @Test("Keeps when the usage was reported, through saving and filtering")
+    func reportedAt() throws {
+        let reported = Date(timeIntervalSince1970: 1792500000)
+        let usage = ClaudeUsage(
+            session: .init(usedFraction: 0.07, resetsAt: reported.addingTimeInterval(3600)),
+            week: nil,
+            reportedAt: reported
+        )
+        #expect(usage.current(at: reported)?.reportedAt == reported)
+        let decoded = try JSONDecoder().decode(ClaudeUsage.self, from: JSONEncoder().encode(usage))
+        #expect(decoded.reportedAt == reported)
+    }
+
+    @Test("Keeps the usage between launches")
+    func usageIsCodable() throws {
+        let usage = ClaudeUsage(
+            session: .init(usedFraction: 0.07, resetsAt: Date(timeIntervalSince1970: 1792516200)),
+            week: nil
+        )
+        let decoded = try JSONDecoder().decode(ClaudeUsage.self, from: JSONEncoder().encode(usage))
+        #expect(decoded == usage)
+    }
+
     /// Runs the real `claude` CLI, so it uses the signed-in Claude account.
     /// Only runs with EMEBAL_LIVE_TESTS=1.
     @Test(
@@ -73,12 +116,21 @@ struct ClaudeTranslatorTests {
         .enabled(if: ProcessInfo.processInfo.environment["EMEBAL_LIVE_TESTS"] == "1")
     )
     func liveTranslation() async throws {
+        let usageArrival = UsageArrival()
         let result = try await ClaudeTranslator.translate(
             "`isStarted` を待っている間に abort されると、60 秒のタイムアウトまで待つようです。",
             into: TargetLanguage(id: "en"),
             model: .sonnet
-        )
+        ) { _ in
+            usageArrival.record()
+        }
+        let finished = Date()
         #expect(result.text.contains("`isStarted`"))
+        // The usage arrives while Claude is still writing the translation.
+        if let arrived = usageArrival.date {
+            print("Usage arrived \(finished.timeIntervalSince(arrived))s before the translation finished")
+            #expect(arrived < finished)
+        }
         #expect(result.text.contains("60"))
         #expect(!result.text.contains("待"))
     }
@@ -149,3 +201,16 @@ struct LanguageDetectionTests {
     }
 }
 
+/// When the usage callback ran, for the live test.
+private final class UsageArrival: @unchecked Sendable {
+    private let lock = NSLock()
+    private var first: Date?
+
+    var date: Date? { lock.withLock { first } }
+
+    func record() {
+        lock.withLock {
+            if first == nil { first = Date() }
+        }
+    }
+}

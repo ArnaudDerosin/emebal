@@ -28,8 +28,13 @@ final class TranslationModel {
 
     var appleState: TranslationState = .loading
     var claudeState: TranslationState = .loading
-    /// The plan usage Claude Code reported with the last translation.
-    var claudeUsage: ClaudeUsage?
+    /// The plan usage Claude Code reported: the last known one at first, if
+    /// recent, then this translation's, as soon as it arrives.
+    var claudeUsage: ClaudeUsage? = ClaudeUsage.recent
+    /// True when this translation finished without reporting any usage (an
+    /// API key has no plan limits, or Claude failed): nothing will come, so
+    /// the panel stops waiting for it.
+    var isClaudeUsageUnavailable = false
     /// Changing it makes SwiftUI's `.translationTask` run Apple's translation.
     var appleConfiguration: TranslationSession.Configuration?
 
@@ -119,15 +124,24 @@ final class TranslationModel {
     private func startClaude() {
         claudeTask?.cancel()
         claudeState = .loading
+        isClaudeUsageUnavailable = false
         let text = text
         let target = target
         let model = settings.claudeModel
         claudeTask = Task {
             do {
-                let result = try await ClaudeTranslator.translate(text, into: target, model: model)
+                let result = try await ClaudeTranslator.translate(text, into: target, model: model) { usage in
+                    Task { @MainActor [weak self] in
+                        self?.updateUsage(usage)
+                    }
+                }
                 guard !Task.isCancelled else { return }
                 claudeState = .done(result.text)
-                claudeUsage = result.usage ?? claudeUsage
+                if let usage = result.usage {
+                    updateUsage(usage)
+                } else {
+                    isClaudeUsageUnavailable = true
+                }
             } catch is CancellationError {
                 return
             } catch {
@@ -137,7 +151,13 @@ final class TranslationModel {
                 case .notSignedIn: claudeState = .needsClaudeSetup(.signIn)
                 default: claudeState = .failed(error.localizedDescription)
                 }
+                isClaudeUsageUnavailable = true
             }
         }
+    }
+
+    private func updateUsage(_ usage: ClaudeUsage) {
+        claudeUsage = usage
+        ClaudeUsage.lastKnown = usage
     }
 }
