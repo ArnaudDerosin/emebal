@@ -9,8 +9,8 @@ struct ClaudeTranslation: Sendable {
 /// How much of the user's Claude plan limits is used. Claude Code reports it
 /// with each answer, so reading it costs nothing and needs no credentials.
 /// Only subscriptions (not API keys) have these limits.
-struct ClaudeUsage: Equatable, Sendable {
-    struct Window: Equatable, Sendable {
+struct ClaudeUsage: Codable, Equatable, Sendable {
+    struct Window: Codable, Equatable, Sendable {
         /// From 0 to 1.
         let usedFraction: Double
         let resetsAt: Date
@@ -20,6 +20,40 @@ struct ClaudeUsage: Equatable, Sendable {
     let session: Window?
     /// The 7-day window.
     let week: Window?
+    /// When Claude Code reported it.
+    var reportedAt = Date()
+
+    /// The windows that haven't reset yet at `date`: after a reset, the old
+    /// numbers no longer mean anything. Nil when none is left.
+    func current(at date: Date) -> ClaudeUsage? {
+        let session = session.flatMap { $0.resetsAt > date ? $0 : nil }
+        let week = week.flatMap { $0.resetsAt > date ? $0 : nil }
+        return session == nil && week == nil ? nil : ClaudeUsage(session: session, week: week, reportedAt: reportedAt)
+    }
+
+    /// How long a saved usage is shown in a new panel before fresh numbers
+    /// arrive. Older numbers may be out of date (Claude used elsewhere), so a
+    /// placeholder is shown instead.
+    static let reuseInterval: TimeInterval = 5 * 60
+
+    /// The last known usage, if it's recent enough to show in a new panel.
+    static var recent: ClaudeUsage? {
+        lastKnown.flatMap { Date().timeIntervalSince($0.reportedAt) < reuseInterval ? $0 : nil }
+    }
+
+    /// The last usage Claude Code reported, kept between translations and
+    /// launches so a new panel can show it right away.
+    static var lastKnown: ClaudeUsage? {
+        get {
+            UserDefaults.standard.data(forKey: lastKnownKey)
+                .flatMap { try? JSONDecoder().decode(ClaudeUsage.self, from: $0) }
+        }
+        set {
+            UserDefaults.standard.set(newValue.flatMap { try? JSONEncoder().encode($0) }, forKey: lastKnownKey)
+        }
+    }
+
+    private static let lastKnownKey = "lastClaudeUsage"
 }
 
 /// Translates by running the user's own, signed-in Claude Code CLI
@@ -50,10 +84,13 @@ enum ClaudeTranslator {
         }
     }
 
+    /// `onUsage` is called as soon as Claude Code reports the plan usage,
+    /// which comes before the translation itself.
     static func translate(
         _ text: String,
         into target: TargetLanguage,
-        model: ClaudeModel
+        model: ClaudeModel,
+        onUsage: @escaping @Sendable (ClaudeUsage) -> Void = { _ in }
     ) async throws -> ClaudeTranslation {
         guard let executable = await ClaudeLocator.find() else {
             throw Failure.notInstalled
@@ -61,7 +98,11 @@ enum ClaudeTranslator {
         let prompt = prompt(for: text, into: target)
         let runner = ProcessRunner(executable: executable)
         let output = try await withTaskCancellationHandler {
-            try await runner.run(model: model, input: prompt)
+            try await runner.run(model: model, input: prompt) { line in
+                if let usage = usage(fromLine: line) {
+                    onUsage(usage)
+                }
+            }
         } onCancel: {
             runner.cancel()
         }
@@ -96,6 +137,14 @@ enum ClaudeTranslator {
             throw Failure.isSignInMessage(text) ? Failure.notSignedIn : Failure.failed(text)
         }
         return ClaudeTranslation(text: text.trimmingCharacters(in: .whitespacesAndNewlines), usage: usage)
+    }
+
+    /// The usage in one line of output, if it's a `rate_limit_event`.
+    static func usage(fromLine line: some StringProtocol) -> ClaudeUsage? {
+        guard let event = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+              event["type"] as? String == "rate_limit_event"
+        else { return nil }
+        return parseUsage(event)
     }
 
     private static func parseUsage(_ event: [String: Any]) -> ClaudeUsage? {
@@ -196,7 +245,8 @@ private final class ProcessRunner: @unchecked Sendable {
         self.executable = executable
     }
 
-    func run(model: ClaudeModel, input: String) async throws -> ProcessOutput {
+    /// `onLine` receives each line of standard output as soon as it's printed.
+    func run(model: ClaudeModel, input: String, onLine: @escaping @Sendable (String) -> Void) async throws -> ProcessOutput {
         process.executableURL = executable
         // stream-json (which needs --verbose) is the output that also carries
         // the plan usage.
@@ -221,7 +271,7 @@ private final class ProcessRunner: @unchecked Sendable {
 
         // Read both pipes while the process runs: if nobody reads, a long
         // output fills the pipe buffer and `claude` blocks forever.
-        let output = PipeReader(stdout)
+        let output = PipeReader(stdout, onLine: onLine)
         let errors = PipeReader(stderr)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -263,19 +313,33 @@ private final class ProcessRunner: @unchecked Sendable {
     }
 }
 
-/// Reads a pipe to the end on a background queue.
+/// Reads a pipe to the end on a background queue, passing on each complete
+/// line as soon as it arrives.
 private final class PipeReader: @unchecked Sendable {
     private let pipe: Pipe
+    private let onLine: (@Sendable (String) -> Void)?
     private let done = DispatchSemaphore(value: 0)
     private var data = Data()
 
-    init(_ pipe: Pipe) {
+    init(_ pipe: Pipe, onLine: (@Sendable (String) -> Void)? = nil) {
         self.pipe = pipe
+        self.onLine = onLine
     }
 
     func start() {
         DispatchQueue.global(qos: .userInitiated).async {
-            self.data = self.pipe.fileHandleForReading.readDataToEndOfFile()
+            let handle = self.pipe.fileHandleForReading
+            var lineStart = 0
+            while true {
+                let chunk = handle.availableData
+                if chunk.isEmpty { break }  // End of the output.
+                self.data.append(chunk)
+                guard let onLine = self.onLine else { continue }
+                while let newline = self.data[lineStart...].firstIndex(of: UInt8(ascii: "\n")) {
+                    onLine(String(decoding: self.data[lineStart..<newline], as: UTF8.self))
+                    lineStart = newline + 1
+                }
+            }
             self.done.signal()
         }
     }
