@@ -74,7 +74,7 @@ struct MenuPanel: View {
                 set: { loginItem.setEnabled($0) }
             ))
             if !isAccessibilityAllowed {
-                MenuAction("Allow Accessibility to Use ⌘C ⌘C…") {
+                MenuAction("Allow Accessibility to Use ⌘C C…") {
                     closeMenu()
                     DoubleCopyMonitor.requestPermission()
                 }

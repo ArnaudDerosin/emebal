@@ -37,6 +37,9 @@ final class TranslationModel {
     var isClaudeUsageUnavailable = false
     /// Changing it makes SwiftUI's `.translationTask` run Apple's translation.
     var appleConfiguration: TranslationSession.Configuration?
+    /// Counts Apple translation requests. When the target language changes
+    /// quickly, results and checks from an earlier request are ignored.
+    @ObservationIgnored private(set) var appleRequest = 0
 
     private var claudeTask: Task<Void, Never>?
 
@@ -56,9 +59,11 @@ final class TranslationModel {
         sourceLanguage.map { LanguageDetection.displayName(of: $0) } ?? String(localized: "Unknown language")
     }
 
+    /// The panel restarts the translations when the target actually changes
+    /// (see `TranslationView`), so picking the current language again, here
+    /// or in the menu bar, does nothing.
     func setTarget(_ language: TargetLanguage) {
         settings.targetLanguageID = language.id
-        start()
     }
 
     /// Starts (or restarts, after a language change) both engines.
@@ -74,6 +79,8 @@ final class TranslationModel {
     // MARK: Apple
 
     private func startApple() {
+        appleRequest += 1
+        let request = appleRequest
         appleState = .loading
         guard let source = sourceLanguage else {
             appleState = .failed(String(localized: "Couldn't detect the language of this text."))
@@ -83,14 +90,14 @@ final class TranslationModel {
             appleState = .done(text)
             return
         }
+        let target = target
         Task {
             let status = await LanguageAvailability().status(from: source, to: target.localeLanguage)
+            // The user picked another language in the meantime.
+            guard request == appleRequest else { return }
             switch status {
             case .installed:
-                appleConfiguration = TranslationSession.Configuration(
-                    source: source,
-                    target: target.localeLanguage
-                )
+                requestAppleTranslation(from: source, to: target.localeLanguage)
             case .supported:
                 appleState = .needsDownload(
                     String(localized: "Apple needs to download \(LanguageDetection.name(of: source)) → \(LanguageDetection.name(of: target.localeLanguage)) once to translate on this Mac.")
@@ -107,14 +114,34 @@ final class TranslationModel {
     /// prompt to download the missing languages.
     func downloadAppleLanguages() {
         guard let source = sourceLanguage else { return }
+        appleRequest += 1
         appleState = .loading
         // The panel doesn't take focus, but the download prompt needs the app
         // to be active to appear.
         NSApplication.shared.activate()
-        appleConfiguration = TranslationSession.Configuration(source: source, target: target.localeLanguage)
+        requestAppleTranslation(from: source, to: target.localeLanguage)
     }
 
-    /// Receives Apple's result from the view's `.translationTask`.
+    /// Makes the view's `.translationTask` run. It only runs when the
+    /// configuration changes, so asking again for the same languages (for
+    /// example back to English after trying Japanese) must invalidate the
+    /// current one instead of setting an equal one, which would do nothing.
+    func requestAppleTranslation(from source: Locale.Language, to target: Locale.Language) {
+        if appleConfiguration?.source == source, appleConfiguration?.target == target {
+            appleConfiguration?.invalidate()
+        } else {
+            appleConfiguration = TranslationSession.Configuration(source: source, target: target)
+        }
+    }
+
+    /// Receives Apple's result from the view's `.translationTask`, unless a
+    /// newer request started since.
+    func setAppleState(_ state: TranslationState, for request: Int) {
+        guard request == appleRequest else { return }
+        appleState = state
+    }
+
+    /// Sets the state directly, for previews and tests.
     func setAppleState(_ state: TranslationState) {
         appleState = state
     }

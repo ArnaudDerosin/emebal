@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Double-press ⌘C on any text and read it in your language.</strong>
+  <strong>Select any text, hold ⌘ and press C twice, and read it in your language.</strong>
 </p>
 
 <p align="center">
@@ -27,10 +27,12 @@
 
 ---
 
-Emebal is a small macOS menu-bar app for instant, natural translations. Select
-text anywhere, press **⌘C twice**, and a floating panel shows two translations
-side by side: Apple's on-device translation, available instantly, and Claude's,
-more natural, a few seconds later.
+Emebal is a minimal, fast translator that lives in your Mac's menu bar. Select
+text in any app, hold **⌘** and press **C** twice (**⌘C C**): a clean panel
+opens right where you are, with an **instant** translation from Apple and a **natural** one from
+Claude, side by side.
+
+No window to switch to, no pasting into a website. Select, press, read.
 
 <p align="center">
   <img src=".github/assets/screenshot.png" alt="Emebal translating a Japanese code-review comment into English: the original text, Apple's translation and Claude's translation side by side" width="800">
@@ -38,19 +40,20 @@ more natural, a few seconds later.
 
 ## Features
 
-- **Double ⌘C anywhere** to translate the selected text, in any app
-- **Automatic source-language detection**, done locally with Apple's
-  NaturalLanguage framework
-- **Target language of your choice**, picked from the panel header and
-  remembered between launches
-- **Two translations side by side**, each with its own Copy button
-- **Turn either engine off** to show only Apple or only Claude, and choose the
-  Claude model
-- **Floating panel** that opens near the cursor and closes when you click
-  elsewhere (or stays open, if you prefer)
-- **Translate Clipboard** from the menu-bar icon, without the shortcut
-- **Open at Login**, so it is always ready in the menu bar
-- **In English and Japanese**, following your Mac's language
+- **Instant.** Apple's on-device translation appears right away, offline and
+  free.
+- **Natural.** Claude's translation follows a few seconds later: fluent, in the
+  original tone, with code, file paths and URLs left untouched.
+- **Out of the way.** A quiet panel near the cursor that closes when you click
+  elsewhere. No Dock icon, no main window.
+- **Automatic.** The source language is detected on your Mac, even in technical
+  messages full of code.
+- **Yours to adjust.** Target language, text size, the columns to show
+  (original, Apple, Claude) and the Claude model, from a simple menu.
+- **Your Claude usage at a glance.** Session and weekly usage, and when the
+  session resets.
+- **In English and Japanese**, following your Mac's language. Also: Translate
+  Clipboard from the menu bar, and Open at Login.
 
 ## How it works
 
@@ -63,26 +66,28 @@ more natural, a few seconds later.
 
 - **Apple Translation** is built into macOS, on-device and free. Languages may
   need to be downloaded once in System Settings.
-- **Claude** translations run the [Claude Code](https://claude.com/claude-code)
-  CLI installed on your Mac (`claude -p`). Emebal never sees your credentials:
-  Claude Code uses your own sign-in, and usage counts toward your own Claude
-  plan or API key. Claude keeps the original tone and leaves code, identifiers,
-  file paths and URLs as they are, which makes it handy for code reviews and
-  technical discussions.
+- **Claude** translations run [Claude Code](https://claude.com/claude-code),
+  Anthropic's `claude` command-line tool, installed on your Mac (not the Claude
+  desktop app). Emebal never sees your credentials: Claude Code uses your own
+  sign-in, and usage counts toward your own Claude plan. Claude keeps the
+  original tone and leaves code, identifiers, file paths and URLs as they are,
+  which makes it handy for code reviews and technical discussions.
 
 ## Getting started
 
 ### Requirements
 
-- macOS 15 or later (for Apple Translation)
-- Xcode 16 or later (Swift 6) to build from source
-- Optional: [Claude Code](https://claude.com/claude-code), installed and signed
-  in, for Claude translations (see below)
+- macOS 15 or later
+- Xcode 16 or later (Swift 6), to build from source
+- For Claude translations (optional): [Claude Code](https://claude.com/claude-code),
+  the `claude` command-line tool (not the Claude desktop app), installed and
+  signed in to your Claude account (see below)
 
 ### Set up Claude (optional)
 
 Apple Translation works out of the box. For Claude translations, install
-[Claude Code](https://claude.com/claude-code) and sign in once.
+[Claude Code](https://claude.com/claude-code) and sign in once with your Claude
+account. No API key needed.
 
 <details>
 <summary>Show setup steps</summary>
@@ -98,8 +103,9 @@ Apple Translation works out of the box. For Claude translations, install
    Other ways to install (Homebrew, npm) are in the
    [Claude Code docs](https://code.claude.com/docs/en/setup).
 
-2. Run `claude` in a terminal and sign in with your Claude account or an
-   Anthropic Console API key.
+2. Run `claude` in a terminal and sign in with your Claude account. (If you
+   pay per use through the Anthropic Console instead of a subscription, an API
+   key works too.)
 
 3. Check that it works:
 
@@ -108,9 +114,10 @@ Apple Translation works out of the box. For Claude translations, install
    ```
 
 That's all: Emebal finds `claude` on its own and uses your sign-in. It never
-sees your credentials, and usage counts toward your own Claude plan or API key.
-Without Claude Code, Emebal shows only the Apple translation, and you can turn
-Claude off in the menu.
+sees your credentials, and usage counts toward your own Claude plan. If Claude
+Code is missing or signed out, the Claude column says so, with a button to fix
+it, and Apple's translation keeps working. You can also turn Claude off in the
+menu.
 
 </details>
 
@@ -158,7 +165,7 @@ To work on the code, open the folder in Xcode (`open Package.swift`) or run
 
 On first use, macOS asks you to allow Emebal in
 **System Settings → Privacy & Security → Accessibility**. Emebal needs this to
-detect the double ⌘C shortcut. Without it, you can still use
+detect the ⌘C C shortcut. Without it, you can still use
 **Translate Clipboard** from the menu-bar icon.
 
 <details>

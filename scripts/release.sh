@@ -82,7 +82,7 @@ open(notes_path, "w").write(notes + f"""
 Download **Emebal-{version}.zip** below, unzip it, and move **Emebal** to
 Applications. Emebal isn't notarized by Apple yet, so the first time macOS
 won't open it: go to **System Settings → Privacy & Security** and click
-**Open Anyway**. Then allow Emebal in **Accessibility** for the ⌘C ⌘C shortcut.
+**Open Anyway**. Then allow Emebal in **Accessibility** for the ⌘C C shortcut (hold ⌘ and press C twice).
 
 Updating from an earlier version? Quit Emebal, replace it in Applications, then
 in **Accessibility** remove Emebal with **−** and allow it again.

@@ -86,6 +86,7 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
                 position(panel)
             }
         }
+        keepOnScreen(panel)
         panel.orderFrontRegardless()
 
         self.panel = panel
@@ -150,6 +151,32 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         let topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
         panel.setContentSize(size)
         panel.setFrameTopLeftPoint(topLeft)
+        // Growing down from the top can push it under the Dock, or past
+        // another edge: move it back inside the screen.
+        keepOnScreen(panel)
+    }
+
+    /// Moves the panel so it fits in the screen's usable area (without the
+    /// menu bar and the Dock), with a small margin. When it's taller than the
+    /// space, the top wins, so the header and its language menu stay reachable.
+    private func keepOnScreen(_ panel: NSPanel) {
+        guard let visible = (panel.screen ?? Self.screenUnderMouse())?.visibleFrame else { return }
+        let origin = Self.origin(keeping: panel.frame, inside: visible)
+        if origin != panel.frame.origin {
+            panel.setFrameOrigin(origin)
+        }
+    }
+
+    /// Where `frame` must move to fit in `visible`, `margin` points from its
+    /// edges. The left and top edges are applied last, so they win when the
+    /// frame is larger than the space.
+    static func origin(keeping frame: NSRect, inside visible: NSRect, margin: CGFloat = 8) -> NSPoint {
+        var origin = frame.origin
+        origin.x = min(origin.x, visible.maxX - margin - frame.width)
+        origin.x = max(origin.x, visible.minX + margin)
+        origin.y = max(origin.y, visible.minY + margin)
+        origin.y = min(origin.y, visible.maxY - margin - frame.height)
+        return origin
     }
 
     /// Limits the size Emebal gives the panel by itself, so long text never
