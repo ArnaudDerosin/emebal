@@ -257,12 +257,15 @@ struct FakeClaudeTests {
 
     @Test("Doesn't stop a slow answer that keeps writing")
     func slowButWriting() async throws {
+        // About 6 s in total, longer than the 3 s timeout, but never silent
+        // for more than 1 s. The margin covers macOS checking a freshly
+        // written script before it starts.
         let fake = try script("""
-        for i in 1 2 3 4 5 6; do echo '{"type":"system"}'; sleep 0.4; done
+        for i in 1 2 3 4 5 6; do echo '{"type":"system"}'; sleep 1; done
         echo '\(Self.result)'
         """)
         let translation = try await ClaudeTranslator.translate("Hello", into: TargetLanguage(id: "fr"), model: .sonnet,
-                                                               executable: fake, idleTimeout: 1)
+                                                               executable: fake, idleTimeout: 3)
         #expect(translation.text == "Bonjour")
     }
 
