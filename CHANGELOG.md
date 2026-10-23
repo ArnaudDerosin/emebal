@@ -6,6 +6,8 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-23
+
 ### Added
 
 - **Keep Claude Ready** in the menu, off by default. It keeps Claude Code
@@ -97,6 +99,7 @@ The first release of Emebal: select text anywhere, hold ⌘ and press C twice
 - `./scripts/build-app.sh --install` builds Emebal and installs it in
   Applications.
 
-[Unreleased]: https://github.com/ArnaudDerosin/emebal/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ArnaudDerosin/emebal/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.1.0
