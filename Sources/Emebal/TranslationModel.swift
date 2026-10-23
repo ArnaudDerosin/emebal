@@ -5,6 +5,8 @@ import Translation
 
 enum TranslationState: Equatable {
     case loading
+    /// Claude is still writing: the translation so far.
+    case partial(String)
     case done(String)
     case failed(String)
     /// Apple supports the pair, but the languages aren't downloaded yet.
@@ -157,11 +159,19 @@ final class TranslationModel {
         let model = settings.claudeModel
         claudeTask = Task {
             do {
-                let result = try await ClaudeTranslator.translate(text, into: target, model: model) { usage in
-                    Task { @MainActor [weak self] in
-                        self?.updateUsage(usage)
+                let result = try await ClaudeTranslator.translate(
+                    text, into: target, model: model,
+                    onUsage: { usage in
+                        Task { @MainActor [weak self] in
+                            self?.updateUsage(usage)
+                        }
+                    },
+                    onText: { written in
+                        Task { @MainActor [weak self] in
+                            self?.showPartialTranslation(written)
+                        }
                     }
-                }
+                )
                 guard !Task.isCancelled else { return }
                 claudeState = .done(result.text)
                 if let usage = result.usage {
@@ -180,6 +190,17 @@ final class TranslationModel {
                 }
                 isClaudeUsageUnavailable = true
             }
+        }
+    }
+
+    /// Shows the translation as Claude writes it, until the final one arrives
+    /// (a late piece never replaces it).
+    private func showPartialTranslation(_ written: String) {
+        switch claudeState {
+        case .loading, .partial:
+            claudeState = .partial(written.trimmingCharacters(in: .whitespacesAndNewlines))
+        default:
+            break
         }
     }
 

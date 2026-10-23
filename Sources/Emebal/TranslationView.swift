@@ -275,6 +275,18 @@ private struct EngineColumn<TitleAccessory: View>: View {
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                if isWorking {
+                    // The only progress indicator, from the start of the
+                    // translation until it's complete, centered on the
+                    // title's capital letters like the usage gauge.
+                    let capHeight = Self.titleCapHeight
+                    ProgressView()
+                        .controlSize(.mini)
+                        .alignmentGuide(.firstTextBaseline) { spinner in
+                            spinner.height / 2 + capHeight / 2
+                        }
+                        .transition(.opacity)
+                }
                 Spacer(minLength: 8)
                 titleAccessory()
             }
@@ -302,13 +314,10 @@ private struct EngineColumn<TitleAccessory: View>: View {
     private var content: some View {
         switch state {
         case .loading:
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text("Translating…")
-                    .font(messageFont)
-                    .foregroundStyle(.secondary)
-            }
-        case .done(let text):
+            Text("Translating…")
+                .font(messageFont)
+                .foregroundStyle(.secondary)
+        case .partial(let text), .done(let text):
             Text(text)
                 .font(textFont)
                 .lineSpacing(textSize.lineSpacing)
@@ -337,6 +346,19 @@ private struct EngineColumn<TitleAccessory: View>: View {
         if case .done = state { return true }
         return false
     }
+
+    /// Translating: nothing yet, or the text so far.
+    private var isWorking: Bool {
+        switch state {
+        case .loading, .partial: true
+        default: false
+        }
+    }
+
+    /// The height of capital letters in the title's font.
+    private static var titleCapHeight: CGFloat {
+        NSFont.preferredFont(forTextStyle: .subheadline).capHeight
+    }
 }
 
 extension EngineColumn where TitleAccessory == EmptyView {
@@ -357,8 +379,8 @@ extension EngineColumn where TitleAccessory == EmptyView {
 /// the Claude title, kept up to date as time passes. The tooltip gives both
 /// reset times.
 ///
-/// Until numbers are known, gray placeholder bars hold their place, so the
-/// line doesn't pop in; the numbers then fade in and roll to their values.
+/// Until numbers are known, a gray placeholder holds their place, so the
+/// line doesn't pop in; the numbers then fade in.
 private struct ClaudeUsageLabel: View {
     let usage: ClaudeUsage?
     /// No usage will come for this translation: show nothing rather than a
@@ -368,14 +390,34 @@ private struct ClaudeUsageLabel: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             // Numbers from a window that has already reset are stale.
-            if let usage = usage?.current(at: context.date) {
-                ClaudeUsageText(usage: usage, now: context.date)
-            } else if !isUnavailable {
-                ClaudeUsageText(usage: .placeholder(at: context.date), now: context.date, isPlaceholder: true)
+            let current = usage?.current(at: context.date)
+            // One view for the placeholder and the numbers, so the numbers
+            // fade in where the placeholder was.
+            if current != nil || !isUnavailable {
+                ClaudeUsageText(
+                    usage: current ?? .placeholder(at: context.date),
+                    now: context.date,
+                    isPlaceholder: current == nil
+                )
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: usage)
-        .animation(.easeInOut(duration: 0.35), value: isUnavailable)
+    }
+}
+
+/// A rounded pill that breathes gently while numbers are on their way. The
+/// repeating animation only changes its opacity: scoped this way, it can't
+/// make the pill glide when the panel resizes.
+private struct PlaceholderPill: View {
+    @State private var isDim = false
+
+    var body: some View {
+        Capsule()
+            .fill(.quaternary)
+            .padding(.vertical, 2)
+            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pill in
+                pill.opacity(isDim ? 0.45 : 1)
+            }
+            .onAppear { isDim = true }
     }
 }
 
@@ -413,22 +455,17 @@ private struct ClaudeUsageText: View {
             Text(summary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                // Digits roll to their new values when the numbers change.
-                .contentTransition(.numericText())
+                // Fades in when the numbers arrive. The animation is scoped
+                // to the opacity: when the panel resizes at the same moment,
+                // the text moves at once instead of gliding.
+                .animation(.easeInOut(duration: 0.35)) { text in
+                    text.opacity(isPlaceholder ? 0 : 1)
+                }
                 // Until numbers arrive: a rounded pill as wide as the text,
-                // breathing gently, in place of the text.
-                .opacity(isPlaceholder ? 0 : 1)
+                // in place of the text.
                 .background {
                     if isPlaceholder {
-                        Capsule()
-                            .fill(.quaternary)
-                            .padding(.vertical, 2)
-                            .phaseAnimator([1, 0.45]) { pill, opacity in
-                                pill.opacity(opacity)
-                            } animation: { _ in
-                                .easeInOut(duration: 0.9)
-                            }
-                            .transition(.opacity)
+                        PlaceholderPill()
                     }
                 }
         }

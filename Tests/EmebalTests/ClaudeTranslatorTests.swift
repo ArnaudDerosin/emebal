@@ -74,6 +74,15 @@ struct ClaudeTranslatorTests {
         #expect(ClaudeTranslator.usage(fromLine: "not json") == nil)
     }
 
+    @Test("Reads a piece of the translation from a single line, as it streams in")
+    func textPieceFromLine() {
+        let line = #"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"It looks"}}}"#
+        #expect(ClaudeTranslator.textPiece(fromLine: line) == "It looks")
+        let start = #"{"type":"stream_event","event":{"type":"message_start"}}"#
+        #expect(ClaudeTranslator.textPiece(fromLine: start) == nil)
+        #expect(ClaudeTranslator.textPiece(fromLine: #"{"type":"result","result":"x"}"#) == nil)
+    }
+
     @Test("Leaves out the windows that have already reset")
     func currentUsage() {
         let now = Date()
@@ -117,13 +126,14 @@ struct ClaudeTranslatorTests {
     )
     func liveTranslation() async throws {
         let usageArrival = UsageArrival()
+        let textArrival = UsageArrival()
         let result = try await ClaudeTranslator.translate(
             "`isStarted` を待っている間に abort されると、60 秒のタイムアウトまで待つようです。",
             into: TargetLanguage(id: "en"),
-            model: .sonnet
-        ) { _ in
-            usageArrival.record()
-        }
+            model: .sonnet,
+            onUsage: { _ in usageArrival.record() },
+            onText: { _ in textArrival.record() }
+        )
         let finished = Date()
         #expect(result.text.contains("`isStarted`"))
         // The usage arrives while Claude is still writing the translation.
@@ -131,6 +141,10 @@ struct ClaudeTranslatorTests {
             print("Usage arrived \(finished.timeIntervalSince(arrived))s before the translation finished")
             #expect(arrived < finished)
         }
+        // The first words arrive while Claude is still writing the rest.
+        let firstWords = try #require(textArrival.date)
+        print("First words arrived \(finished.timeIntervalSince(firstWords))s before the translation finished")
+        #expect(firstWords < finished)
         #expect(result.text.contains("60"))
         #expect(!result.text.contains("待"))
     }
@@ -212,5 +226,149 @@ private final class UsageArrival: @unchecked Sendable {
         lock.withLock {
             if first == nil { first = Date() }
         }
+    }
+}
+
+/// Runs `ClaudeTranslator` against small shell scripts that stand in for
+/// `claude`, to test how it handles a stalled or an older Claude Code.
+@Suite("ClaudeTranslator with a stand-in claude")
+struct FakeClaudeTests {
+    static let result = #"{"type":"result","is_error":false,"result":"Bonjour"}"#
+
+    /// Writes an executable shell script and returns its URL.
+    func script(_ body: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fake-claude-\(UUID().uuidString)")
+        try "#!/bin/sh\ncat > /dev/null\n\(body)\n".write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        return url
+    }
+
+    @Test("Stops a Claude Code that prints nothing for too long")
+    func stalled() async throws {
+        let fake = try script("sleep 30")
+        let start = Date()
+        await #expect(throws: ClaudeTranslator.Failure.timedOut) {
+            try await ClaudeTranslator.translate("Hello", into: TargetLanguage(id: "fr"), model: .sonnet,
+                                                 executable: fake, idleTimeout: 1)
+        }
+        #expect(Date().timeIntervalSince(start) < 10)
+    }
+
+    @Test("Doesn't stop a slow answer that keeps writing")
+    func slowButWriting() async throws {
+        // About 6 s in total, longer than the 3 s timeout, but never silent
+        // for more than 1 s. The margin covers macOS checking a freshly
+        // written script before it starts.
+        let fake = try script("""
+        for i in 1 2 3 4 5 6; do echo '{"type":"system"}'; sleep 1; done
+        echo '\(Self.result)'
+        """)
+        let translation = try await ClaudeTranslator.translate("Hello", into: TargetLanguage(id: "fr"), model: .sonnet,
+                                                               executable: fake, idleTimeout: 3)
+        #expect(translation.text == "Bonjour")
+    }
+
+    @Test("Falls back to the basic call when Claude Code doesn't know an option")
+    func olderClaudeCode() async throws {
+        let fake = try script("""
+        case "$*" in
+          *--tools*) echo "error: unknown option '--tools'" >&2; exit 1 ;;
+        esac
+        echo '\(Self.result)'
+        """)
+        let translation = try await ClaudeTranslator.translate("Hello", into: TargetLanguage(id: "fr"), model: .sonnet,
+                                                               executable: fake)
+        #expect(translation.text == "Bonjour")
+    }
+}
+
+/// The two-step mode used by Keep Claude Ready: `claude` started first,
+/// waiting, and given its text later.
+@Suite("Ready Claude Code")
+struct ReadyClaudeTests {
+    /// A stand-in that waits for one message, like `claude --input-format
+    /// stream-json`, then runs `then`.
+    func waitingScript(then: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fake-ready-claude-\(UUID().uuidString)")
+        let body = """
+        #!/bin/sh
+        IFS= read -r line
+        case "$line" in
+          *'"type":"user"'*) ;;
+          *) echo "not a user message" >&2; exit 1 ;;
+        esac
+        \(then)
+        """
+        try body.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        return url
+    }
+
+    @Test("Waits for its text, then answers it")
+    func waitsThenAnswers() async throws {
+        let fake = try waitingScript(then: "echo '\(FakeClaudeTests.result)'")
+        let runner = ProcessRunner(executable: fake, model: .sonnet, idleTimeout: 1)
+        try runner.start(isFull: true, waitsForMessage: true)
+        try await Task.sleep(for: .seconds(2))  // Longer than the timeout.
+        #expect(runner.isWaiting)
+        let output = await runner.send("Translate this", onLine: { _ in })
+        #expect(!runner.isWaiting)
+        #expect(!output.timedOut)
+        #expect(try ClaudeTranslator.parse(output.stdout).text == "Bonjour")
+    }
+
+    @Test("Survives a Claude Code that exits before reading its text")
+    func exitedBeforeSend() async throws {
+        // Exits at once without reading, like a Claude Code that rejects an option.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("fake-exits-\(UUID().uuidString)")
+        try "#!/bin/sh\necho 'error: unknown option' >&2\nexit 1\n".write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        let runner = ProcessRunner(executable: url, model: .sonnet)
+        try runner.start(isFull: true, waitsForMessage: true)
+        // macOS may check a freshly written script before running it.
+        for _ in 0..<50 where runner.isWaiting {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(!runner.isWaiting)
+        // Sending to it used to kill the app with SIGPIPE.
+        let output = await runner.send(String(repeating: "x", count: 200_000), onLine: { _ in })
+        #expect(output.stderr.contains("unknown option"))
+    }
+
+    @Test("Times out on silence only after getting its text")
+    func timesOutAfterSend() async throws {
+        let fake = try waitingScript(then: "sleep 30")
+        let runner = ProcessRunner(executable: fake, model: .sonnet, idleTimeout: 1)
+        try runner.start(isFull: true, waitsForMessage: true)
+        let start = Date()
+        let output = await runner.send("Translate this", onLine: { _ in })
+        #expect(output.timedOut)
+        #expect(Date().timeIntervalSince(start) < 10)
+    }
+
+    /// Runs the real `claude` in its waiting mode. Only with EMEBAL_LIVE_TESTS=1.
+    @Test(
+        "A real Claude Code waits, then translates",
+        .enabled(if: ProcessInfo.processInfo.environment["EMEBAL_LIVE_TESTS"] == "1")
+    )
+    func liveReady() async throws {
+        let executable = try #require(await ClaudeLocator.find())
+        let prompt = ClaudeTranslator.prompt(for: "Bonjour, comment ça va ?", into: TargetLanguage(id: "en"))
+        let runner = ProcessRunner(executable: executable, model: .sonnet)
+        try runner.start(isFull: true, waitsForMessage: true)
+        try await Task.sleep(for: .seconds(3))
+        #expect(runner.isWaiting)
+        let sent = Date()
+        let firstWords = UsageArrival()
+        let output = await runner.send(prompt) { line in
+            if ClaudeTranslator.textPiece(fromLine: line) != nil { firstWords.record() }
+        }
+        let translation = try ClaudeTranslator.parse(output.stdout, errors: output.stderr)
+        // The plan usage comes in this mode too.
+        #expect(translation.usage != nil)
+        print("Ready Claude: first words \(try #require(firstWords.date).timeIntervalSince(sent))s after sending, translation: \(translation.text)")
+        #expect(translation.text.lowercased().contains("hello") || translation.text.lowercased().contains("hi"))
     }
 }

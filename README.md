@@ -42,8 +42,11 @@ No window to switch to, no pasting into a website. Select, press, read.
 
 - **Instant.** Apple's on-device translation appears right away, offline and
   free.
-- **Natural.** Claude's translation follows a few seconds later: fluent, in the
-  original tone, with code, file paths and URLs left untouched.
+- **Natural.** Claude's translation follows: fluent, in the original tone, with
+  code, file paths and URLs left untouched.
+- **Fast.** Claude's translation appears as it's written, with the first words
+  in about 1.5 s. Turn on **Keep Claude Ready** and they appear in about 0.9 s
+  (it keeps Claude Code started, using about 270 MB of memory).
 - **Out of the way.** A quiet panel near the cursor that closes when you click
   elsewhere. No Dock icon, no main window.
 - **Automatic.** The source language is detected on your Mac, even in technical
@@ -59,7 +62,7 @@ No window to switch to, no pasting into a website. Select, press, read.
 
 | | Apple Translation | Claude |
 |---|---|---|
-| Speed | Instant | A few seconds |
+| Speed | Instant | First words in about 1.5 s (0.9 s with Keep Claude Ready) |
 | Runs | On your Mac, offline | Through your own Claude Code |
 | Cost | Free | Counts toward your own Claude account |
 | Style | More literal | Natural, keeps the tone, leaves code untouched |

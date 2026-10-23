@@ -56,6 +56,9 @@
 /* MenuPanel.swift */
 "Claude Model" = "Claude Model";
 
+/* ClaudeTranslator.swift */
+"Claude took too long to answer. Try again." = "Claude took too long to answer. Try again.";
+
 /* TranslationView.swift */
 "Close (Esc)" = "Close (Esc)";
 
@@ -80,11 +83,17 @@
 /* TranslationView.swift */
 "Download…" = "Download…";
 
+/* MenuPanel.swift */
+"Faster translations · uses about 270 MB of memory" = "Faster translations · uses about 270 MB of memory";
+
 /* AppSettings.swift */
 "Haiku (lighter)" = "Haiku (lighter)";
 
 /* TranslationView.swift */
 "Install Claude Code…" = "Install Claude Code…";
+
+/* MenuPanel.swift */
+"Keep Claude Ready" = "Keep Claude Ready";
 
 /* TranslationView.swift */
 "Language detected automatically" = "Language detected automatically";

@@ -110,7 +110,19 @@ final class AppSettings {
     }
 
     var isClaudeEnabled: Bool {
-        didSet { defaults.set(isClaudeEnabled, forKey: Keys.claudeEnabled) }
+        didSet {
+            defaults.set(isClaudeEnabled, forKey: Keys.claudeEnabled)
+            updateReadyClaude()
+        }
+    }
+
+    /// Keep a Claude Code started and waiting, for faster translations at the
+    /// cost of memory. Off unless the user turns it on.
+    var keepsClaudeReady: Bool {
+        didSet {
+            defaults.set(keepsClaudeReady, forKey: Keys.keepsClaudeReady)
+            updateReadyClaude()
+        }
     }
 
     /// Show the copied text in its own column, left of the translations.
@@ -129,7 +141,15 @@ final class AppSettings {
     }
 
     var claudeModel: ClaudeModel {
-        didSet { defaults.set(claudeModel.rawValue, forKey: Keys.claudeModel) }
+        didSet {
+            defaults.set(claudeModel.rawValue, forKey: Keys.claudeModel)
+            updateReadyClaude()
+        }
+    }
+
+    /// Starts, replaces or stops the waiting Claude Code to match the settings.
+    func updateReadyClaude() {
+        ReadyClaude.shared.update(isEnabled: keepsClaudeReady && isClaudeEnabled, model: claudeModel)
     }
 
     var targetLanguage: TargetLanguage {
@@ -143,6 +163,7 @@ final class AppSettings {
         isSourceShown = defaults.object(forKey: Keys.sourceShown) as? Bool ?? true
         closesOnClickOutside = defaults.object(forKey: Keys.closesOnClickOutside) as? Bool ?? true
         textSize = defaults.string(forKey: Keys.textSize).flatMap(TextSize.init(rawValue:)) ?? .medium
+        keepsClaudeReady = defaults.object(forKey: Keys.keepsClaudeReady) as? Bool ?? false
         claudeModel = defaults.string(forKey: Keys.claudeModel).flatMap(ClaudeModel.init(rawValue:)) ?? .sonnet
     }
 
@@ -153,6 +174,7 @@ final class AppSettings {
         static let sourceShown = "sourceShown"
         static let closesOnClickOutside = "closesOnClickOutside"
         static let textSize = "textSize"
+        static let keepsClaudeReady = "keepsClaudeReady"
         static let claudeModel = "claudeModel"
     }
 }

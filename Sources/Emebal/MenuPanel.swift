@@ -45,6 +45,12 @@ struct MenuPanel: View {
                 }
             }
             .disabled(!settings.isClaudeEnabled)
+            MenuSwitch(
+                "Keep Claude Ready",
+                detail: "Faster translations · uses about 270 MB of memory",
+                isOn: $settings.keepsClaudeReady
+            )
+            .disabled(!settings.isClaudeEnabled)
 
             MenuDivider()
             // In the same order as the columns in the panel.
@@ -107,18 +113,34 @@ private let menuInset: CGFloat = 14
 /// A row with a label on the left and a control on the right.
 private struct MenuRow<Control: View>: View {
     let title: LocalizedStringKey
+    var detail: LocalizedStringKey?
     @ViewBuilder let control: () -> Control
 
-    init(_ title: LocalizedStringKey, @ViewBuilder control: @escaping () -> Control) {
+    init(
+        _ title: LocalizedStringKey,
+        detail: LocalizedStringKey? = nil,
+        @ViewBuilder control: @escaping () -> Control
+    ) {
         self.title = title
+        self.detail = detail
         self.control = control
     }
 
     var body: some View {
         HStack {
-            Text(title)
-                .lineLimit(1)
-                .layoutPriority(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .lineLimit(1)
+                if let detail {
+                    // Wraps rather than hiding the end, which says the cost.
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .layoutPriority(1)
             Spacer(minLength: 12)
             control()
         }
@@ -130,15 +152,18 @@ private struct MenuRow<Control: View>: View {
 /// An on/off setting, with a small switch like in the Wi-Fi menu.
 private struct MenuSwitch: View {
     let title: LocalizedStringKey
+    /// A small gray line under the title, for what the setting costs.
+    var detail: LocalizedStringKey?
     @Binding var isOn: Bool
 
-    init(_ title: LocalizedStringKey, isOn: Binding<Bool>) {
+    init(_ title: LocalizedStringKey, detail: LocalizedStringKey? = nil, isOn: Binding<Bool>) {
         self.title = title
+        self.detail = detail
         self._isOn = isOn
     }
 
     var body: some View {
-        MenuRow(title) {
+        MenuRow(title, detail: detail) {
             Toggle(title, isOn: $isOn)
                 .toggleStyle(.switch)
                 .labelsHidden()
