@@ -30,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
         self.monitor = monitor
+        AppSettings.shared.updateReadyClaude()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Don't leave a waiting Claude Code behind.
+        ReadyClaude.shared.stop()
     }
 
     func translateClipboard() {

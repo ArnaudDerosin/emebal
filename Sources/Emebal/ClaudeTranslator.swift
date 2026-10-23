@@ -63,6 +63,8 @@ enum ClaudeTranslator {
         case notInstalled
         /// Claude Code is installed but has no account to use.
         case notSignedIn
+        /// Claude Code printed nothing for `ProcessRunner.idleTimeout`.
+        case timedOut
         case failed(String)
 
         var errorDescription: String? {
@@ -71,6 +73,8 @@ enum ClaudeTranslator {
                 String(localized: "Claude Code not found. Install it and sign in, or turn Claude off in the menu.")
             case .notSignedIn:
                 String(localized: "Claude Code isn't signed in.")
+            case .timedOut:
+                String(localized: "Claude took too long to answer. Try again.")
             case .failed(let message):
                 message.isEmpty ? String(localized: "Claude Code failed.") : message
             }
@@ -86,27 +90,94 @@ enum ClaudeTranslator {
 
     /// `onUsage` is called as soon as Claude Code reports the plan usage,
     /// which comes before the translation itself.
+    ///
+    /// `onText` receives the translation written so far, as Claude writes it,
+    /// so it can be shown before it's complete.
     static func translate(
         _ text: String,
         into target: TargetLanguage,
         model: ClaudeModel,
-        onUsage: @escaping @Sendable (ClaudeUsage) -> Void = { _ in }
+        onUsage: @escaping @Sendable (ClaudeUsage) -> Void = { _ in },
+        onText: @escaping @Sendable (String) -> Void = { _ in },
+        executable: URL? = nil,
+        idleTimeout: TimeInterval = ProcessRunner.idleTimeout
     ) async throws -> ClaudeTranslation {
-        guard let executable = await ClaudeLocator.find() else {
+        // Tests pass their own stand-in `executable`; the app may use a ready
+        // Claude Code.
+        let isUsingReadyClaude = executable == nil
+        var found = executable
+        if found == nil {
+            found = await ClaudeLocator.find()
+        }
+        guard let executable = found else {
             throw Failure.notInstalled
         }
         let prompt = prompt(for: text, into: target)
-        let runner = ProcessRunner(executable: executable)
-        let output = try await withTaskCancellationHandler {
-            try await runner.run(model: model, input: prompt) { line in
-                if let usage = usage(fromLine: line) {
-                    onUsage(usage)
-                }
+
+        let written = TextSoFar()
+        @Sendable func handle(_ line: String) {
+            if let usage = usage(fromLine: line) {
+                onUsage(usage)
+            } else if let piece = textPiece(fromLine: line) {
+                onText(written.appending(piece))
             }
-        } onCancel: {
-            runner.cancel()
+        }
+
+        func send(to runner: ProcessRunner) async -> ProcessOutput {
+            await withTaskCancellationHandler {
+                await runner.send(prompt, onLine: handle)
+            } onCancel: {
+                runner.cancel()
+            }
+        }
+
+        func run(isFull: Bool) async throws -> ProcessOutput {
+            let runner = ProcessRunner(executable: executable, model: model, idleTimeout: idleTimeout)
+            return try await withTaskCancellationHandler {
+                try await runner.run(input: prompt, isFull: isFull, onLine: handle)
+            } onCancel: {
+                runner.cancel()
+            }
+        }
+
+        var output: ProcessOutput
+        // Claude Code already started and waiting, if the user keeps it ready.
+        if isUsingReadyClaude, let ready = await ReadyClaude.shared.take(model: model, executable: executable) {
+            output = await send(to: ready)
+            if output.stderr.contains("unknown option") {
+                // Too old for the waiting mode: translate the normal way.
+                await ReadyClaude.shared.markUnsupported()
+                output = try await run(isFull: true)
+            }
+        } else {
+            output = try await run(isFull: true)
+        }
+        // An older Claude Code that doesn't know one of the options: ask again
+        // the basic way, which works everywhere (the whole text at the end).
+        if output.stderr.contains("unknown option") {
+            output = try await run(isFull: false)
+        }
+        if isUsingReadyClaude {
+            // Ready for the next translation.
+            await ReadyClaude.shared.prepare(model: model, executable: executable)
+        }
+        if output.timedOut {
+            throw Failure.timedOut
         }
         return try parse(output.stdout, errors: output.stderr)
+    }
+
+    /// A piece of the translation in one line of output, if it's a text delta
+    /// from `--include-partial-messages`.
+    static func textPiece(fromLine line: some StringProtocol) -> String? {
+        guard let event = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+              event["type"] as? String == "stream_event",
+              let inner = event["event"] as? [String: Any],
+              inner["type"] as? String == "content_block_delta",
+              let delta = inner["delta"] as? [String: Any],
+              delta["type"] as? String == "text_delta"
+        else { return nil }
+        return delta["text"] as? String
     }
 
     /// Reads the JSON lines that `claude -p --output-format stream-json`
@@ -171,7 +242,8 @@ enum ClaudeTranslator {
         and with the same tone (casual, polite, technical) as the original. Don't translate word for word.
         - Keep the meaning exact. Don't add, drop or soften anything.
         - Leave code, identifiers, file paths, URLs, error codes and product names exactly as they are. \
-        Keep Markdown formatting, lists and line breaks.
+        Keep Markdown formatting and lists, and keep the same lines: each line of the text, \
+        including empty ones, becomes one line of the translation.
         - If the text is already in \(target.englishName), return it unchanged.
 
         Output only the translation: no notes, no quotes, no explanations.
@@ -227,30 +299,96 @@ enum ClaudeLocator {
     }
 }
 
-/// What `claude` printed. Errors are also reported on stdout, in the
-/// `result` event, so both are kept whatever the exit status.
-private struct ProcessOutput: Sendable {
-    let stdout: String
-    let stderr: String
+/// The translation written so far, built from the streamed pieces. Lines
+/// arrive one after another on a background queue.
+private final class TextSoFar: @unchecked Sendable {
+    private let lock = NSLock()
+    private var text = ""
+
+    func appending(_ piece: String) -> String {
+        lock.withLock {
+            text += piece
+            return text
+        }
+    }
 }
 
-/// Runs `claude -p` with the prompt on stdin.
-private final class ProcessRunner: @unchecked Sendable {
-    private let process = Process()
-    private let executable: URL
-    private let lock = NSLock()
-    private var isCancelled = false
+/// What `claude` printed. Errors are also reported on stdout, in the
+/// `result` event, so both are kept whatever the exit status.
+struct ProcessOutput: Sendable {
+    let stdout: String
+    let stderr: String
+    /// Stopped because it printed nothing for too long.
+    var timedOut = false
+}
 
-    init(executable: URL) {
+/// Runs `claude -p`. Either in one go (`run`), or in two steps: `start`
+/// launches it and leaves it waiting for its message, and `send` gives it the
+/// text later, so a translation doesn't wait for Claude Code to start (see
+/// `ReadyClaude`).
+final class ProcessRunner: @unchecked Sendable {
+    /// How long `claude` may print nothing once it has its text before it's
+    /// stopped. Not a limit on the whole translation: a long one that keeps
+    /// streaming is never cut.
+    static let idleTimeout: TimeInterval = 60
+
+    /// The options of a full call. A translation needs no tools, MCP servers,
+    /// skills or saved session, and leaving them out sends about 90% fewer
+    /// tokens, with the same translations.
+    static let fullOptions = [
+        // The translation in pieces as it's written, to show it early.
+        "--include-partial-messages",
+        "--tools", "",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--no-session-persistence",
+    ]
+
+    let model: ClaudeModel
+    let executable: URL
+    private let idleTimeout: TimeInterval
+    private let process = Process()
+    private let stdin = Pipe()
+    private let lock = NSLock()
+    private var waitsForMessage = false
+    private var isCancelled = false
+    private var lastActivity = Date()
+    private var timedOut = false
+    private var lineHandler: (@Sendable (String) -> Void)?
+    private var finished: ProcessOutput?
+    private var finishedContinuation: CheckedContinuation<ProcessOutput, Never>?
+
+    /// Writing to a `claude` that has already exited (a waiting one that died,
+    /// or an older one that rejected an option) would otherwise kill Emebal
+    /// with SIGPIPE. Ignored, the write just fails, and the fallbacks run.
+    private static let ignoresBrokenPipes: Void = {
+        signal(SIGPIPE, SIG_IGN)
+    }()
+
+    init(executable: URL, model: ClaudeModel, idleTimeout: TimeInterval = ProcessRunner.idleTimeout) {
+        _ = Self.ignoresBrokenPipes
         self.executable = executable
+        self.model = model
+        self.idleTimeout = idleTimeout
     }
 
-    /// `onLine` receives each line of standard output as soon as it's printed.
-    func run(model: ClaudeModel, input: String, onLine: @escaping @Sendable (String) -> Void) async throws -> ProcessOutput {
+    /// Whether it's still running and hasn't been given its text yet.
+    var isWaiting: Bool {
+        lock.withLock { finished == nil && lineHandler == nil && !isCancelled } && process.isRunning
+    }
+
+    /// Launches `claude`. `isFull` adds `fullOptions`; without it, the call
+    /// works with older versions of Claude Code too. `waitsForMessage` makes
+    /// it wait for a message on standard input instead of reading the whole
+    /// input as the prompt (a plain `claude -p` gives up after a few seconds).
+    func start(isFull: Bool, waitsForMessage: Bool = false) throws {
+        self.waitsForMessage = waitsForMessage
         process.executableURL = executable
         // stream-json (which needs --verbose) is the output that also carries
         // the plan usage.
         process.arguments = ["-p", "--model", model.rawValue, "--output-format", "stream-json", "--verbose"]
+            + (waitsForMessage ? ["--input-format", "stream-json"] : [])
+            + (isFull ? Self.fullOptions : [])
         // Give `claude` a usable PATH (for example to find `node` when it was
         // installed with npm), since the app's own PATH is minimal.
         var environment = ProcessInfo.processInfo.environment
@@ -262,7 +400,6 @@ private final class ProcessRunner: @unchecked Sendable {
         try? FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
         process.currentDirectoryURL = workDir
 
-        let stdin = Pipe()
         let stdout = Pipe()
         let stderr = Pipe()
         process.standardInput = stdin
@@ -271,36 +408,72 @@ private final class ProcessRunner: @unchecked Sendable {
 
         // Read both pipes while the process runs: if nobody reads, a long
         // output fills the pipe buffer and `claude` blocks forever.
-        let output = PipeReader(stdout, onLine: onLine)
+        let output = PipeReader(stdout) { [weak self] line in
+            self?.handle(line)
+        }
         let errors = PipeReader(stderr)
 
-        return try await withCheckedThrowingContinuation { continuation in
-            process.terminationHandler = { _ in
-                continuation.resume(returning: ProcessOutput(stdout: output.waitForText(), stderr: errors.waitForText()))
+        process.terminationHandler = { [weak self] _ in
+            guard let self else { return }
+            let collected = ProcessOutput(
+                stdout: output.waitForText(),
+                stderr: errors.waitForText(),
+                timedOut: lock.withLock { timedOut }
+            )
+            let continuation = lock.withLock {
+                finished = collected
+                defer { finishedContinuation = nil }
+                return finishedContinuation
             }
-
-            lock.lock()
-            let cancelledBeforeStart = isCancelled
-            if !cancelledBeforeStart {
-                do {
-                    try process.run()
-                } catch {
-                    lock.unlock()
-                    continuation.resume(throwing: error)
-                    return
-                }
-            }
-            lock.unlock()
-
-            if cancelledBeforeStart {
-                continuation.resume(throwing: CancellationError())
-                return
-            }
-            output.start()
-            errors.start()
-            stdin.fileHandleForWriting.write(Data(input.utf8))
-            try? stdin.fileHandleForWriting.close()
+            continuation?.resume(returning: collected)
         }
+
+        try lock.withLock {
+            if isCancelled { throw CancellationError() }
+            try process.run()
+        }
+        output.start()
+        errors.start()
+    }
+
+    /// Gives `claude` its text and waits until it's done. `onLine` receives
+    /// each line of standard output as soon as it's printed.
+    func send(_ input: String, onLine: @escaping @Sendable (String) -> Void) async -> ProcessOutput {
+        lock.withLock {
+            lineHandler = onLine
+            lastActivity = Date()
+        }
+        let watchdog = startWatchdog()
+        defer { watchdog.cancel() }
+
+        let message: String
+        if waitsForMessage {
+            let user: [String: Any] = ["type": "user", "message": ["role": "user", "content": input]]
+            let data = (try? JSONSerialization.data(withJSONObject: user)) ?? Data()
+            message = String(decoding: data, as: UTF8.self) + "\n"
+        } else {
+            message = input
+        }
+        let handle = stdin.fileHandleForWriting
+        try? handle.write(contentsOf: Data(message.utf8))
+        try? handle.close()
+
+        return await withCheckedContinuation { continuation in
+            let done = lock.withLock { () -> ProcessOutput? in
+                if let finished { return finished }
+                finishedContinuation = continuation
+                return nil
+            }
+            if let done {
+                continuation.resume(returning: done)
+            }
+        }
+    }
+
+    /// Starts `claude` and gives it its text at once.
+    func run(input: String, isFull: Bool, onLine: @escaping @Sendable (String) -> Void) async throws -> ProcessOutput {
+        try start(isFull: isFull)
+        return await send(input, onLine: onLine)
     }
 
     func cancel() {
@@ -310,6 +483,36 @@ private final class ProcessRunner: @unchecked Sendable {
         if process.isRunning {
             process.terminate()
         }
+    }
+
+    private func handle(_ line: String) {
+        let handler = lock.withLock {
+            lastActivity = Date()
+            return lineHandler
+        }
+        // Lines printed while waiting for the message (Claude Code starting)
+        // have no translation to go to.
+        handler?(line)
+    }
+
+    /// Stops `claude` when it has printed nothing for `idleTimeout` since it
+    /// got its text, so a stalled call doesn't leave the panel on
+    /// "Translating…" forever.
+    private func startWatchdog() -> DispatchSourceTimer {
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        let interval = min(5, idleTimeout / 2)
+        timer.schedule(deadline: .now() + interval, repeating: interval)
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            lock.lock()
+            defer { lock.unlock() }
+            if process.isRunning, Date().timeIntervalSince(lastActivity) > idleTimeout {
+                timedOut = true
+                process.terminate()
+            }
+        }
+        timer.resume()
+        return timer
     }
 }
 

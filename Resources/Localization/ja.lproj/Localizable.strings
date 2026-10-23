@@ -105,3 +105,10 @@
 "Claude Code isn't signed in. In Terminal, run `claude` and sign in, then translate again." = "Claude Code にサインインしていません。ターミナルで `claude` を実行してサインインしてから、もう一度翻訳してください。";
 
 "Open Terminal" = "ターミナルを開く";
+
+"Claude took too long to answer. Try again." = "Claude の応答に時間がかかりすぎました。もう一度お試しください。";
+
+"Keep Claude Ready" = "Claude を待機させておく";
+
+/* Under Keep Claude Ready in the menu: what it does and what it costs. */
+"Faster translations · uses about 270 MB of memory" = "翻訳が速くなります・約 270 MB のメモリを使用";

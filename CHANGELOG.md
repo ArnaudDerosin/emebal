@@ -6,6 +6,35 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Keep Claude Ready** in the menu, off by default. It keeps Claude Code
+  started and waiting, which brings Claude's first words from about 1.5 s
+  down to about 0.9 s, and the whole translation about 0.8 s sooner. It uses
+  about 270 MB of memory while it waits, and none of your Claude plan until
+  you translate.
+
+### Changed
+
+- Claude's translation appears as it's written, word by word: the first words
+  show in about 1.5 s, or about 0.9 s with Keep Claude Ready (see above).
+  Before, nothing showed until the whole translation was done, about 3–4 s,
+  more for long texts.
+- Claude translations use about 90% fewer tokens of your Claude plan: Emebal
+  no longer loads tools, MCP servers or skills it doesn't need to translate.
+- Claude keeps the original's line breaks, without adding blank lines.
+- One small progress indicator next to each column's title, from the start of
+  the translation until it's complete, instead of a spinner in the text.
+
+### Fixed
+
+- A Claude translation that stops responding no longer stays on
+  "Translating…": after 60 seconds without any answer, the column says so.
+- The Claude usage placeholder no longer glides across the panel when the
+  panel changes size.
+- Emebal no longer quits when Claude Code exits before reading the text (for
+  example an older version rejecting an option).
+
 ## [0.2.0] - 2026-10-22
 
 ### Added
