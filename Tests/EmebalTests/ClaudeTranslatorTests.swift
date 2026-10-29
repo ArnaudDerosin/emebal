@@ -11,6 +11,14 @@ struct ClaudeTranslatorTests {
         #expect(prompt.hasSuffix("こんにちは"))
     }
 
+    @Test("The improvement prompt keeps the draft's language and includes the text")
+    func improvementPrompt() {
+        let draft = "PR has been sent upstream to prevent patch on our side.."
+        let prompt = ClaudeTranslator.improvementPrompt(for: draft)
+        #expect(prompt.contains("don't translate it"))
+        #expect(prompt.hasSuffix(draft))
+    }
+
     @Test("Reads the answer and the plan usage from the stream-json output")
     func parsesStream() throws {
         let output = """

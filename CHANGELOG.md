@@ -6,6 +6,19 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Improve** button under the original text: Claude rewrites your own draft
+  more clearly and naturally, in the same language, with code and URLs left as
+  they are. It appears in a new row under the original, with Apple's and
+  Claude's translations of it, so you can compare them card for card and copy
+  the one you want. It uses your Claude plan only when you click it.
+
+### Changed
+
+- The cards side by side in the panel are now all the same height, with their
+  Copy buttons aligned at the bottom.
+
 ## [0.3.0] - 2026-10-23
 
 ### Added

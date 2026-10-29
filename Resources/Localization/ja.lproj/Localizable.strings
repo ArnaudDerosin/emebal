@@ -112,3 +112,14 @@
 
 /* Under Keep Claude Ready in the menu: what it does and what it costs. */
 "Faster translations · uses about 270 MB of memory" = "翻訳が速くなります・約 270 MB のメモリを使用";
+
+/* Button under the original text: Claude rewrites it more clearly, in the same language. */
+"Improve" = "改善";
+
+/* Label of the row under the original's: Claude's improved wording and its translations. */
+"Improved by Claude" = "Claude による改善";
+
+/* Title of the improved wording, in the row under the original. */
+"Improved" = "改善後";
+
+"Improving…" = "改善中…";

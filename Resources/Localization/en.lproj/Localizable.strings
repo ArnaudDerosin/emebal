@@ -90,6 +90,18 @@
 "Haiku (lighter)" = "Haiku (lighter)";
 
 /* TranslationView.swift */
+"Improve" = "Improve";
+
+/* TranslationView.swift */
+"Improved" = "Improved";
+
+/* TranslationView.swift */
+"Improved by Claude" = "Improved by Claude";
+
+/* TranslationView.swift */
+"Improving…" = "Improving…";
+
+/* TranslationView.swift */
 "Install Claude Code…" = "Install Claude Code…";
 
 /* MenuPanel.swift */
