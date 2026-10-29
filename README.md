@@ -47,6 +47,9 @@ No window to switch to, no pasting into a website. Select, press, read.
 - **Fast.** Claude's translation appears as it's written, with the first words
   in about 1.5 s. Turn on **Keep Claude Ready** and they appear in about 0.9 s
   (it keeps Claude Code started, using about 270 MB of memory).
+- **Better wording.** On your own draft, click **Improve** under the original:
+  Claude's clearer, more natural version, in the same language and with code
+  and URLs left untouched, appears in a new row below, with its translations.
 - **Out of the way.** A quiet panel near the cursor that closes when you click
   elsewhere. No Dock icon, no main window.
 - **Automatic.** The source language is detected on your Mac, even in technical

@@ -102,6 +102,36 @@ enum ClaudeTranslator {
         executable: URL? = nil,
         idleTimeout: TimeInterval = ProcessRunner.idleTimeout
     ) async throws -> ClaudeTranslation {
+        try await answer(
+            prompt(for: text, into: target), model: model,
+            onUsage: onUsage, onText: onText, executable: executable, idleTimeout: idleTimeout
+        )
+    }
+
+    /// Rewrites a draft in its own language, more clearly and naturally. The
+    /// callbacks are the same as `translate`'s.
+    static func improve(
+        _ text: String,
+        model: ClaudeModel,
+        onUsage: @escaping @Sendable (ClaudeUsage) -> Void = { _ in },
+        onText: @escaping @Sendable (String) -> Void = { _ in },
+        executable: URL? = nil,
+        idleTimeout: TimeInterval = ProcessRunner.idleTimeout
+    ) async throws -> ClaudeTranslation {
+        try await answer(
+            improvementPrompt(for: text), model: model,
+            onUsage: onUsage, onText: onText, executable: executable, idleTimeout: idleTimeout
+        )
+    }
+
+    private static func answer(
+        _ prompt: String,
+        model: ClaudeModel,
+        onUsage: @escaping @Sendable (ClaudeUsage) -> Void,
+        onText: @escaping @Sendable (String) -> Void,
+        executable: URL?,
+        idleTimeout: TimeInterval
+    ) async throws -> ClaudeTranslation {
         // Tests pass their own stand-in `executable`; the app may use a ready
         // Claude Code.
         let isUsingReadyClaude = executable == nil
@@ -112,7 +142,6 @@ enum ClaudeTranslator {
         guard let executable = found else {
             throw Failure.notInstalled
         }
-        let prompt = prompt(for: text, into: target)
 
         let written = TextSoFar()
         @Sendable func handle(_ line: String) {
@@ -249,6 +278,27 @@ enum ClaudeTranslator {
         Output only the translation: no notes, no quotes, no explanations.
 
         Text:
+        \(text)
+        """
+    }
+
+    static func improvementPrompt(for text: String) -> String {
+        """
+        You are a careful editor. Improve the wording of the draft below so it reads clearly \
+        and naturally, the way a fluent native speaker would write it.
+
+        - Keep the draft's language: don't translate it.
+        - Keep the meaning and the facts exactly. Don't add information, and don't drop any.
+        - Keep the tone (casual, polite, technical) and about the same length. Fix grammar, \
+        spelling, punctuation and awkward phrasing.
+        - Leave code, identifiers, file paths, URLs, error codes and product names exactly as they are. \
+        Keep Markdown formatting and lists. You may split or join sentences and paragraphs \
+        when it makes the text easier to read.
+        - If the draft is already well written, return it unchanged.
+
+        Output only the improved text: no notes, no quotes, no explanations.
+
+        Draft:
         \(text)
         """
     }

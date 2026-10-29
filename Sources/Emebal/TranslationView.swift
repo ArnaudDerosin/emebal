@@ -17,26 +17,11 @@ struct TranslationView: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             } else {
-                HStack(alignment: .top, spacing: 10) {
-                    if model.isSourceShown {
-                        EngineColumn(title: "Original", state: .done(model.text), isMuted: true, fillsHeight: layout.isResized)
-                    }
-                    if model.isAppleEnabled {
-                        EngineColumn(
-                            title: "Apple · on-device",
-                            state: model.appleState,
-                            fillsHeight: layout.isResized,
-                            onDownload: model.downloadAppleLanguages
-                        )
-                    }
-                    if model.isClaudeEnabled {
-                        EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized) {
-                            ClaudeUsageLabel(
-                                usage: model.claudeUsage,
-                                isUnavailable: model.isClaudeUsageUnavailable
-                            )
-                        }
-                    }
+                originalRow
+                // The Improve button is under the original, so its row only
+                // shows with the original.
+                if model.isImprovementShown && model.isSourceShown {
+                    improvedRow
                 }
             }
         }
@@ -67,8 +52,26 @@ struct TranslationView: View {
             }
             model.setAppleState(state, for: request)
         }
+        .translationTask(model.improvedAppleConfiguration) { session in
+            let request = model.improvedAppleRequest
+            guard let improved = model.improvedText else { return }
+            let state: TranslationState
+            do {
+                state = .done(try await session.translate(improved).targetText)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                state = .failed(error.localizedDescription)
+            }
+            model.setImprovedAppleState(state, for: request)
+        }
         .onChange(of: model.appleState) { onContentChange() }
         .onChange(of: model.claudeState) { onContentChange() }
+        .onChange(of: model.improvedState) { onContentChange() }
+        .onChange(of: model.improvedTranslationState) { onContentChange() }
+        .onChange(of: model.improvedAppleState) { onContentChange() }
+        .onChange(of: model.isImprovementShown) { onContentChange() }
         .onChange(of: model.claudeUsage) { onContentChange() }
         .onChange(of: model.isAppleEnabled) { onContentChange() }
         .onChange(of: model.isClaudeEnabled) { onContentChange() }
@@ -78,6 +81,84 @@ struct TranslationView: View {
         // only when the language really changed.
         .onChange(of: model.target) { model.start() }
         .environment(\.textSize, model.textSize)
+    }
+
+    /// The original and its translations.
+    private var originalRow: some View {
+        // Improving runs the user's Claude Code, so only when Claude is on.
+        let improve = model.isClaudeEnabled && !model.isImprovementShown
+            ? ColumnAction(title: "Improve", perform: model.showImprovement)
+            : nil
+        return row {
+            if model.isSourceShown {
+                EngineColumn(
+                    title: "Original",
+                    state: .done(model.text),
+                    isMuted: true,
+                    fillsHeight: layout.isResized,
+                    action: improve
+                )
+            }
+            if model.isAppleEnabled {
+                EngineColumn(
+                    title: "Apple · on-device",
+                    state: model.appleState,
+                    fillsHeight: layout.isResized,
+                    onDownload: model.downloadAppleLanguages
+                )
+            }
+            if model.isClaudeEnabled {
+                EngineColumn(title: "Claude", state: model.claudeState, fillsHeight: layout.isResized) {
+                    ClaudeUsageLabel(
+                        usage: model.claudeUsage,
+                        isUnavailable: model.isClaudeUsageUnavailable
+                    )
+                }
+            }
+        }
+    }
+
+    /// Claude's improved wording and its translations, under the original's,
+    /// card for card.
+    private var improvedRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text("Improved by Claude")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                VStack { Divider() }
+            }
+            .padding(.top, 4)
+            row {
+                EngineColumn(
+                    title: "Improved",
+                    state: model.improvedState,
+                    loadingText: "Improving…",
+                    fillsHeight: layout.isResized
+                )
+                if model.isAppleEnabled {
+                    EngineColumn(
+                        title: "Apple · on-device",
+                        state: model.improvedAppleState,
+                        fillsHeight: layout.isResized,
+                        onDownload: model.downloadAppleLanguages
+                    )
+                }
+                if model.isClaudeEnabled {
+                    EngineColumn(title: "Claude", state: model.improvedTranslationState, fillsHeight: layout.isResized)
+                }
+            }
+        }
+    }
+
+    /// Cards side by side, all as tall as the tallest, so rows read as rows.
+    /// Once the user resizes the panel, the rows share its height instead.
+    private func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            content()
+        }
+        .fixedSize(horizontal: false, vertical: !layout.isResized)
     }
 
     /// At the medium text size. A single column is wider than a third of three:
@@ -249,15 +330,24 @@ private final class ClosureMenuItem: NSMenuItem {
     }
 }
 
+/// A button at the bottom left of a column, e.g. Improve under the original.
+struct ColumnAction {
+    let title: LocalizedStringKey
+    let perform: () -> Void
+}
+
 private struct EngineColumn<TitleAccessory: View>: View {
     let title: LocalizedStringKey
     let state: TranslationState
+    /// Shown until the first words arrive.
+    var loadingText: LocalizedStringKey = "Translating…"
     /// Shows the text in the same gray as the source language, for the
     /// original text, which is there for reference.
     var isMuted = false
     /// Fill the panel's height instead of growing with the text up to a limit.
     var fillsHeight = false
     var onDownload: (() -> Void)? = nil
+    var action: ColumnAction? = nil
     /// Shown at the right of the title, e.g. the Claude plan usage: it
     /// describes the engine, so it sits next to its name.
     @ViewBuilder var titleAccessory: () -> TitleAccessory
@@ -295,7 +385,12 @@ private struct EngineColumn<TitleAccessory: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 360)
+            // In a row of taller cards, the buttons stay at the bottom.
+            Spacer(minLength: 0)
             HStack {
+                if let action {
+                    Button(action.title, action: action.perform)
+                }
                 Spacer()
                 Button("Copy") {
                     guard case .done(let text) = state else { return }
@@ -306,7 +401,8 @@ private struct EngineColumn<TitleAccessory: View>: View {
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
+        // As tall as the row: see `TranslationView.row`.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 
@@ -314,7 +410,7 @@ private struct EngineColumn<TitleAccessory: View>: View {
     private var content: some View {
         switch state {
         case .loading:
-            Text("Translating…")
+            Text(loadingText)
                 .font(messageFont)
                 .foregroundStyle(.secondary)
         case .partial(let text), .done(let text):
@@ -365,11 +461,16 @@ extension EngineColumn where TitleAccessory == EmptyView {
     init(
         title: LocalizedStringKey,
         state: TranslationState,
+        loadingText: LocalizedStringKey = "Translating…",
         isMuted: Bool = false,
         fillsHeight: Bool = false,
-        onDownload: (() -> Void)? = nil
+        onDownload: (() -> Void)? = nil,
+        action: ColumnAction? = nil
     ) {
-        self.init(title: title, state: state, isMuted: isMuted, fillsHeight: fillsHeight, onDownload: onDownload) {
+        self.init(
+            title: title, state: state, loadingText: loadingText, isMuted: isMuted,
+            fillsHeight: fillsHeight, onDownload: onDownload, action: action
+        ) {
             EmptyView()
         }
     }
