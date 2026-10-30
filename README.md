@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="#in-action">In action</a> ·
   <a href="#features">Features</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#getting-started">Getting started</a> ·
@@ -37,6 +38,38 @@ No window to switch to, no pasting into a website. Select, press, read.
 <p align="center">
   <img src=".github/assets/screenshot.png" alt="Emebal translating a Japanese code-review comment into English: the original text, Apple's translation and Claude's translation side by side" width="800">
 </p>
+
+## In action
+
+Select text in any app, hold ⌘ and press C twice. Everything happens in one
+small panel, right where you're working.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/assets/side-by-side.gif" alt="A French message translated into English: Apple's translation appears at once, then Claude's" /><br />
+      <b>Translate side by side</b><br />
+      Apple's on-device translation appears at once, and Claude's natural one streams in next to it, in the original tone.
+    </td>
+    <td width="50%" valign="top">
+      <img src=".github/assets/claude-only.gif" alt="A panel showing only Claude's translation of a French email, streaming in" /><br />
+      <b>Claude, in under a second</b><br />
+      Show only the columns you need. With Keep Claude Ready on, Claude's first words appear in under a second.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/assets/improve.png" alt="Release notes with mistakes, and below them Claude's improved version, each with its Japanese translations" /><br />
+      <b>Improve your wording</b><br />
+      Select your own draft and click Improve. Claude rewrites it in the same language, clearer and more natural, with its translations right below.
+    </td>
+    <td width="50%" valign="top">
+      <img src=".github/assets/settings.png" alt="Emebal's menu: target language, Claude model, Keep Claude Ready, columns, text size and more" /><br />
+      <b>Make it yours</b><br />
+      Pick the target language, the Claude model, the columns to show and the text size, all from the menu bar.
+    </td>
+  </tr>
+</table>
 
 ## Features
 
