@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="#実際の動き">実際の動き</a> ·
   <a href="#機能">機能</a> ·
   <a href="#しくみ">しくみ</a> ·
   <a href="#はじめかた">はじめかた</a> ·
@@ -34,6 +35,37 @@ Emebal は、Mac のメニューバーで動く、ミニマルで速い翻訳ア
 <p align="center">
   <img src=".github/assets/screenshot.png" alt="日本語のコードレビューのコメントを英語に翻訳している Emebal。原文、Apple の翻訳、Claude の翻訳が横に並んでいる" width="800">
 </p>
+
+## 実際の動き
+
+どのアプリでもテキストを選んで、⌘ を押したまま C を2回。作業している場所に、小さなパネルがひとつ開くだけです。
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/assets/side-by-side.gif" alt="フランス語のメッセージを英語に翻訳。Apple の翻訳がすぐに表示され、続いて Claude の翻訳が届く" /><br />
+      <b>横に並べて翻訳</b><br />
+      Apple のオンデバイス翻訳がすぐに表示され、その横に Claude の自然な翻訳が、元のトーンのまま届きます。
+    </td>
+    <td width="50%" valign="top">
+      <img src=".github/assets/claude-only.gif" alt="フランス語のメールの Claude の翻訳だけを表示しているパネル" /><br />
+      <b>Claude の訳を 1 秒以内に</b><br />
+      必要な列だけを表示できます。Claude を待機させておく をオンにすると、Claude の最初の言葉が 1 秒以内に表示されます。
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/assets/improve.png" alt="間違いのあるリリースノートと、その下に Claude が改善した文章。それぞれに日本語訳が付いている" /><br />
+      <b>文章を改善</b><br />
+      自分の下書きを選んで 改善 をクリック。Claude が同じ言語のまま、より明確で自然な文章に書き直し、その翻訳もすぐ下に表示します。
+    </td>
+    <td width="50%" valign="top">
+      <img src=".github/assets/settings.png" alt="Emebal のメニュー。翻訳先の言語、Claude のモデル、Claude を待機させておく、表示する列、文字サイズなど" /><br />
+      <b>好みに合わせて</b><br />
+      翻訳先の言語、Claude のモデル、表示する列、文字サイズを、すべてメニューバーから変更できます。
+    </td>
+  </tr>
+</table>
 
 ## 機能
 
