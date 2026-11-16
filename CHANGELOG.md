@@ -6,6 +6,8 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-16
+
 ### Added
 
 - Romaji for Japanese text: when you translate from Japanese, its reading in
@@ -132,7 +134,8 @@ The first release of Emebal: select text anywhere, hold ⌘ and press C twice
 - `./scripts/build-app.sh --install` builds Emebal and installs it in
   Applications.
 
-[Unreleased]: https://github.com/ArnaudDerosin/emebal/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ArnaudDerosin/emebal/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ArnaudDerosin/emebal/releases/tag/v0.2.0
