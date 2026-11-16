@@ -27,6 +27,11 @@ enum ClaudeSetup: Equatable {
 final class TranslationModel {
     let text: String
     let sourceLanguage: Locale.Language?
+    /// The original in romaji, under it, when it's Japanese.
+    let romaji: String?
+    /// The romaji's height as the user dragged it; nil shows 3 lines, so
+    /// the original stays readable.
+    var romajiHeight: CGFloat?
     private let settings: AppSettings
 
     var appleState: TranslationState = .loading
@@ -62,7 +67,9 @@ final class TranslationModel {
 
     init(text: String, settings: AppSettings) {
         self.text = text
-        self.sourceLanguage = LanguageDetection.detect(text)
+        let sourceLanguage = LanguageDetection.detect(text)
+        self.sourceLanguage = sourceLanguage
+        self.romaji = sourceLanguage?.languageCode == .japanese ? Romaji.of(text) : nil
         self.settings = settings
     }
 

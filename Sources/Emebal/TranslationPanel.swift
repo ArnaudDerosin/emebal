@@ -141,6 +141,15 @@ final class TranslationPanel: NSObject, NSWindowDelegate {
         layout?.isResized = true
     }
 
+    /// macOS also resizes the panel on its own, after Emebal placed it, when
+    /// the content's minimum size grows: the panel then grows down from its
+    /// top, possibly past the Dock or the screen's bottom. Bring it back.
+    /// Not while the user resizes it: their size and place win.
+    func windowDidResize(_ notification: Notification) {
+        guard let panel, !panel.inLiveResize else { return }
+        keepOnScreen(panel)
+    }
+
     /// Resizes the panel to the view's ideal size, keeping its top-left corner
     /// in place, unless the user has resized it.
     private func fitToContent() {
