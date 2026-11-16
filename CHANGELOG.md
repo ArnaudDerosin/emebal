@@ -6,6 +6,11 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The panel no longer ends up partly below the screen or under the Dock when
+  it grows after opening.
+
 ## [0.4.0] - 2026-10-29
 
 ### Added
