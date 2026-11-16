@@ -50,6 +50,8 @@ No window to switch to, no pasting into a website. Select, press, read.
 - **Better wording.** On your own draft, click **Improve** under the original:
   Claude's clearer, more natural version, in the same language and with code
   and URLs left untouched, appears in a new row below, with its translations.
+- **Romaji.** Japanese originals show their reading in romaji underneath,
+  like Google Translate ("Tōkyō ni ikitai desu"), worked out on your Mac.
 - **Out of the way.** A quiet panel near the cursor that closes when you click
   elsewhere. No Dock icon, no main window.
 - **Automatic.** The source language is detected on your Mac, even in technical

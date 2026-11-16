@@ -76,6 +76,7 @@ struct TranslationView: View {
         .onChange(of: model.isAppleEnabled) { onContentChange() }
         .onChange(of: model.isClaudeEnabled) { onContentChange() }
         .onChange(of: model.isSourceShown) { onContentChange() }
+        .onChange(of: model.romajiHeight) { onContentChange() }
         .onChange(of: model.textSize) { onContentChange() }
         // From the panel's language menu or the menu bar: translate again,
         // only when the language really changed.
@@ -94,6 +95,8 @@ struct TranslationView: View {
                 EngineColumn(
                     title: "Original",
                     state: .done(model.text),
+                    reading: model.romaji,
+                    readingHeight: $model.romajiHeight,
                     isMuted: true,
                     fillsHeight: layout.isResized,
                     action: improve
@@ -341,6 +344,10 @@ private struct EngineColumn<TitleAccessory: View>: View {
     let state: TranslationState
     /// Shown until the first words arrive.
     var loadingText: LocalizedStringKey = "Translating…"
+    /// How the text reads, under it, smaller: romaji for Japanese.
+    var reading: String? = nil
+    /// The reading's height as the user dragged it; nil for 3 lines.
+    var readingHeight: Binding<CGFloat?> = .constant(nil)
     /// Shows the text in the same gray as the source language, for the
     /// original text, which is there for reference.
     var isMuted = false
@@ -356,6 +363,13 @@ private struct EngineColumn<TitleAccessory: View>: View {
     /// comfortable to read, and the same size in every column, so lines can be
     /// compared side by side.
     @Environment(\.textSize) private var textSize
+    /// The text's full height, its area's height, and how much taller the
+    /// reading under it is than its first 3 lines.
+    @State private var contentHeight: CGFloat = 0
+    @State private var textAreaHeight: CGFloat = 0
+    @State private var readingExtraHeight: CGFloat = 0
+    /// The text above a reading keeps at least this much room.
+    private static var minTextHeight: CGFloat { 40 }
     private var textFont: Font { .system(size: textSize.textPointSize) }
     private var messageFont: Font { .system(size: textSize.messagePointSize) }
 
@@ -380,13 +394,36 @@ private struct EngineColumn<TitleAccessory: View>: View {
                 Spacer(minLength: 8)
                 titleAccessory()
             }
-            ScrollView {
-                content
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
+                ScrollView {
+                    content
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                }
+                .frame(
+                    minHeight: reading == nil ? 60 : Self.minTextHeight,
+                    // The text's height, up to a limit, sizes the panel. Lines
+                    // of reading beyond the first 3 take their room from the
+                    // text above, which scrolls, so the card and the panel
+                    // keep their size.
+                    idealHeight: max(Self.minTextHeight, min(contentHeight, 360) - readingExtraHeight),
+                    // In a row made taller by another card, e.g. the original
+                    // with its reading, the text fills the card.
+                    maxHeight: .infinity
+                )
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { textAreaHeight = $0 }
+                // In a row of taller cards, the buttons stay at the bottom.
+                Spacer(minLength: 0)
+                // At the bottom, above the buttons, when the row is taller.
+                if let reading {
+                    ReadingText(
+                        text: reading,
+                        chosenHeight: readingHeight,
+                        room: textAreaHeight - Self.minTextHeight,
+                        onExtraHeightChange: { readingExtraHeight = $0 }
+                    )
+                }
             }
-            .frame(minHeight: 60, maxHeight: fillsHeight ? .infinity : 360)
-            // In a row of taller cards, the buttons stay at the bottom.
-            Spacer(minLength: 0)
             HStack {
                 if let action {
                     Button(action.title, action: action.perform)
@@ -462,16 +499,159 @@ extension EngineColumn where TitleAccessory == EmptyView {
         title: LocalizedStringKey,
         state: TranslationState,
         loadingText: LocalizedStringKey = "Translating…",
+        reading: String? = nil,
+        readingHeight: Binding<CGFloat?> = .constant(nil),
         isMuted: Bool = false,
         fillsHeight: Bool = false,
         onDownload: (() -> Void)? = nil,
         action: ColumnAction? = nil
     ) {
         self.init(
-            title: title, state: state, loadingText: loadingText, isMuted: isMuted,
+            title: title, state: state, loadingText: loadingText, reading: reading,
+            readingHeight: readingHeight, isMuted: isMuted,
             fillsHeight: fillsHeight, onDownload: onDownload, action: action
         ) {
             EmptyView()
+        }
+    }
+}
+
+/// How the text reads, e.g. romaji under Japanese, under a handle the user
+/// drags up to see more or back down to 3 lines. 3 lines at first, so a long
+/// reading doesn't push the original out of view; it scrolls for the rest.
+/// Growing takes room from the text above, never the panel's.
+private struct ReadingText: View {
+    let text: String
+    @Binding var chosenHeight: CGFloat?
+    /// How much taller it can grow, taken from the text above.
+    let room: CGFloat
+    /// How much taller it is than its first 3 lines (negative when shorter).
+    let onExtraHeightChange: (CGFloat) -> Void
+    @Environment(\.textSize) private var textSize
+    /// Measured at the column's width: the whole text, and 3 lines.
+    @State private var fullHeight: CGFloat = 0
+    @State private var threeLinesHeight: CGFloat = 0
+    /// The height and the most it could grow when the drag started.
+    @State private var drag: (start: CGFloat, max: CGFloat)?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // About a line of the text above, always, so the reading stands
+            // apart from it, with the handle in the middle when there's more
+            // than 3 lines to show.
+            ZStack {
+                if fullHeight > threeLinesHeight + 1 {
+                    handle
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: (textSize.textPointSize * 1.4).rounded())
+            Group {
+                if threeLinesHeight > 0 {
+                    ScrollView {
+                        styled.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: shownHeight)
+                } else {
+                    // Until measured.
+                    styled.lineLimit(3)
+                }
+            }
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) {
+                    measured(styled) { fullHeight = $0 }
+                    measured(styled.lineLimit(3, reservesSpace: true)) { threeLinesHeight = $0 }
+                }
+                .hidden()
+            }
+        }
+        .onChange(of: shownHeight - defaultHeight, initial: true) { _, extra in
+            onExtraHeightChange(threeLinesHeight > 0 ? extra : 0)
+        }
+    }
+
+    private var defaultHeight: CGFloat { min(fullHeight, threeLinesHeight) }
+    private var shownHeight: CGFloat { min(fullHeight, chosenHeight ?? threeLinesHeight) }
+
+    /// A short bar, centered, with the up-down cursor.
+    private var handle: some View {
+        Capsule()
+            .fill(.quaternary)
+            .frame(width: 36, height: 4)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
+            .background {
+                // In AppKit: a SwiftUI drag would also move the panel, which
+                // moves when its background is dragged.
+                DragHandle(
+                    onChanged: { rise in
+                        let start = drag ?? (shownHeight, min(fullHeight, shownHeight + max(0, room)))
+                        drag = start
+                        // Follows the mouse, from 3 lines to the whole text.
+                        chosenHeight = min(max(defaultHeight, start.start + rise), max(start.start, start.max))
+                    },
+                    onEnded: { drag = nil }
+                )
+            }
+            .help("Drag to show more or fewer lines")
+    }
+
+    private var styled: some View {
+        Text(verbatim: text)
+            .font(.system(size: textSize.messagePointSize))
+            .lineSpacing(textSize.lineSpacing)
+            // Fainter than the original, which is already gray.
+            .foregroundStyle(.tertiary)
+    }
+
+    private func measured(_ view: some View, _ action: @escaping (CGFloat) -> Void) -> some View {
+        view
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { action($0) }
+    }
+}
+
+/// A strip the user drags up or down, that doesn't move the window.
+private struct DragHandle: NSViewRepresentable {
+    /// How far the mouse has risen since the drag started, in points.
+    let onChanged: (CGFloat) -> Void
+    let onEnded: () -> Void
+
+    func makeNSView(context: Context) -> DragHandleView {
+        DragHandleView()
+    }
+
+    func updateNSView(_ view: DragHandleView, context: Context) {
+        view.onChanged = onChanged
+        view.onEnded = onEnded
+    }
+
+    final class DragHandleView: NSView {
+        var onChanged: (CGFloat) -> Void = { _ in }
+        var onEnded: () -> Void = {}
+        private var startY: CGFloat = 0
+
+        override var mouseDownCanMoveWindow: Bool { false }
+
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .resizeUpDown)
+        }
+
+        // In screen coordinates: the panel may grow while dragging.
+        override func mouseDown(with event: NSEvent) {
+            startY = NSEvent.mouseLocation.y
+        }
+
+        override func mouseDragged(with event: NSEvent) {
+            onChanged(NSEvent.mouseLocation.y - startY)
+        }
+
+        override func mouseUp(with event: NSEvent) {
+            onEnded()
         }
     }
 }

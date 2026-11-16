@@ -83,6 +83,9 @@
 /* TranslationView.swift */
 "Download…" = "Download…";
 
+/* TranslationView.swift */
+"Drag to show more or fewer lines" = "Drag to show more or fewer lines";
+
 /* MenuPanel.swift */
 "Faster translations · uses about 270 MB of memory" = "Faster translations · uses about 270 MB of memory";
 

@@ -6,6 +6,14 @@ All notable changes to Emebal are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Japanese originals now show their reading in romaji under the text, like
+  Google Translate: "東京に行きたいです" reads "Tōkyō ni ikitai desu". It's
+  worked out on your Mac, and code and English words are left as they are.
+  It shows 3 lines at first, a line apart from the Japanese: drag the bar
+  between them to see more.
+
 ### Fixed
 
 - Japanese text with many English words or English quotes, like a code
