@@ -187,6 +187,39 @@ struct LanguageDetectionTests {
         #expect(LanguageDetection.detect(english)?.languageCode == "en")
     }
 
+    @Test("Japanese with many English words and quotes is still Japanese")
+    func japaneseWithEnglish() {
+        let text = """
+        App Shortcuts の trigger phrase (日本語)。 Apple の指定どおり "AppShortcuts.strings" という名前にし、
+         phrase 中の変数は ${ } で書く。 key は AppShortcuts.swift に書いた phrase template と完全一致させる。
+           "When localizing App Shortcuts, add the strings into a file called AppShortcuts.strings
+            and replace any variables in those strings with ${ } notation."
+           https://developer.apple.com/videos/play/tech-talks/10168/
+         iOS 17 以上を対象にするアプリなら String Catalog (AppShortcuts.xcstrings) にすると、 言語ごとに phrase を
+         いくつでも足せる。 このアプリの最低 iOS は 16.7 なので .strings のままにしている。
+           "this feature is available only to apps targeting iOS 17 later"
+        """
+        #expect(LanguageDetection.detect(text)?.languageCode == "ja")
+        // English quoting Japanese stays English.
+        let english = "The error says 「ファイルが見つかりません」 when I open the settings page. What does it mean?"
+        #expect(LanguageDetection.detect(english)?.languageCode == "en")
+        #expect(LanguageDetection.detect("I really love 寿司 and ラーメン, we should go again soon.")?.languageCode == "en")
+        // Japanese grammar around English terms, as in a commit message.
+        #expect(LanguageDetection.detect("fix(fastlane): dSYM は beta lane で gym の直後に Sentry へ上げる")?.languageCode == "ja")
+        #expect(LanguageDetection.detect("Thanks, the ありがとう sticker on the laptop looks great and everyone at the office loves it.")?.languageCode == "en")
+    }
+
+    @Test("Kanji alone is read in the user's own language, when it could be either")
+    func kanjiOnly() {
+        let japaneseReader = ["en-JP", "ja-JP"]
+        #expect(LanguageDetection.detect("燃料電池", userLanguages: japaneseReader)?.languageCode == "ja")
+        // A clear Chinese sentence stays Chinese.
+        #expect(LanguageDetection.detect("我們明天去台北開會，請準時到。", userLanguages: japaneseReader)?.languageCode == "zh")
+        #expect(LanguageDetection.detect("我们明天去北京开会，请准时到。", userLanguages: japaneseReader)?.languageCode == "zh")
+        // For someone who reads Traditional Chinese, it's Chinese.
+        #expect(LanguageDetection.detect("燃料電池", userLanguages: ["zh-Hant-TW"])?.languageCode == "zh")
+    }
+
     @Test("Keeps the words glued to code")
     func keepsGluedWords() {
         let text = "BleManager.disconnectの完了を待たずにsendEventを呼ぶと、ca79b0fのテストが落ちます。"

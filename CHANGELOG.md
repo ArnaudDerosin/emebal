@@ -8,6 +8,13 @@ All notable changes to Emebal are listed here. The format follows
 
 ### Fixed
 
+- Japanese text with many English words or English quotes, like a code
+  comment quoting Apple's documentation or a commit message like "dSYM は
+  beta lane で gym の直後に Sentry へ上げる", is now detected as Japanese
+  instead of English.
+- Words written only in kanji, like "燃料電池", which read the same in Japanese
+  and Chinese, are now detected in the language set on your Mac, instead of
+  as Chinese for someone who reads Japanese.
 - The panel no longer ends up partly below the screen or under the Dock when
   it grows after opening.
 
